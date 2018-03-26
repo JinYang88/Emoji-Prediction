@@ -25,5 +25,6 @@ def normalizeString(s):
     s = re.sub(r'(\W)(?=\1)', '', s)
     s = re.sub(r"([.!?])", r" \1", s)
     s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
-    
+    s = re.sub(r"@.*$", r" ", s)
+
     return s

@@ -75,11 +75,11 @@ if not test_mode:
     train_iter.create_batches()
     batch_num = len(list(train_iter.batches))
 
+    batch_start = time.time()
     for i in range(epochs) :
         avg_loss = 0.0
         train_iter.init_epoch()
         batch_count = 0
-        batch_start = time.time()
         for batch, label in train_dl:
             y_pred = MODEL(batch)
             loss = loss_function(y_pred, label)
@@ -113,7 +113,7 @@ for batch, label in test_dl:
     final_res.extend(pred_res)
     final_labels.extend(list(label.cpu().data))
 
-    
+
 Acc = accuracy_score(final_res, final_labels)
 Precision = precision_score(final_res, final_labels, average="macro")
 Recall = recall_score(final_res, final_labels, average="macro")
@@ -124,7 +124,7 @@ print('Test accuracy : [{}], Prediction: [{}], Recall: [{}], F1_micro: [{}]'.for
 print('F1_macro: [{}]'.format(F1_macro))
 
 with open('Prediction-Result.txt', 'w') as fw:
-    for line in final_labels:
+    for line in final_res:
         fw.write(str(line) + '\n')
 
 

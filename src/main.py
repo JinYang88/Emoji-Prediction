@@ -113,14 +113,18 @@ for batch, label in test_dl:
     final_res.extend(pred_res)
     final_labels.extend(list(label.cpu().data))
 
+    
 Acc = accuracy_score(final_res, final_labels)
 Precision = precision_score(final_res, final_labels, average="macro")
 Recall = recall_score(final_res, final_labels, average="macro")
-F1 = f1_score(final_res, final_labels, average="macro")
-print('Prediction done. Test accuracy : [{}], Prediction: [{}], Recall: [{}], F1: [{}]'.format(Acc, Precision, Recall, F1))
+F1_macro = f1_score(final_res, final_labels, average="macro")
+F1_micro = f1_score(final_res, final_labels, average="micro")
+print('Prediction done.')
+print('Test accuracy : [{}], Prediction: [{}], Recall: [{}], F1_micro: [{}]'.format(Acc, Precision, Recall, F1_micro))
+print('F1_macro: [{}]'.format(F1_macro))
 
-
-
-
+with open('Prediction-Result.txt', 'w') as fw:
+    for line in final_labels:
+        fw.write(str(line) + '\n')
 
 

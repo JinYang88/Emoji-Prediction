@@ -19,7 +19,7 @@ class BatchWrapper:
                 y = y.view(-1)
 
             else:
-                y = getattr(batch, self.y_vars)
+                y = getattr(batch, self.y_vars[0])
 
             yield (x, y)
   

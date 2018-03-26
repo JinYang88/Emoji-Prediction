@@ -46,7 +46,7 @@ test = data.TabularDataset(
         fields=[('Id', ID), ('Text', TEXT), ('Label', LABEL)], skip_header=True)
 
 
-TEXT.build_vocab(train,valid,test)
+TEXT.build_vocab(train,valid,test, min_freq=3)
 print('Building vocabulary Finished.')
 
 
@@ -120,7 +120,7 @@ Recall = recall_score(final_res, final_labels, average="macro")
 F1_macro = f1_score(final_res, final_labels, average="macro")
 F1_micro = f1_score(final_res, final_labels, average="micro")
 print('Prediction done.')
-print('Test accuracy : [{}], Prediction: [{}], Recall: [{}], F1_micro: [{}]'.format(Acc, Precision, Recall, F1_micro))
+print('Test accuracy : [{}], Precision: [{}], Recall: [{}], F1_micro: [{}]'.format(Acc, Precision, Recall, F1_micro))
 print('F1_macro: [{}]'.format(F1_macro))
 
 with open('Prediction-Result.txt', 'w') as fw:

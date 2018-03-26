@@ -15,8 +15,7 @@ import time
 import sys
 import model
 import datahelper
-from sklearn.metrics import accuracy_score
-
+from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
 
 
 device = -1 # 0 for gpu, -1 for cpu
@@ -114,9 +113,11 @@ for batch, label in test_dl:
     final_res.extend(pred_res)
     final_labels.extend(list(label.cpu().data))
 
-acc = accuracy_score(final_res, final_labels)
-print('Prediction done. Test accuracy is [{}]'.format(acc))
-
+Acc = accuracy_score(final_res, final_labels)
+Precision = precision_score(final_res, final_labels, average="macro")
+Recall = recall_score(final_res, final_labels, average="macro")
+F1 = f1_score(final_res, final_labels, average="macro")
+print('Prediction done. Test accuracy : [{}], Prediction: [{}], Recall: [{}], F1: [{}]'.format(Acc, Precision, Recall, F1))
 
 
 

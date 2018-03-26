@@ -18,7 +18,7 @@ import datahelper
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
 
 
-device = 0 # 0 for gpu, -1 for cpu
+device = -1 # 0 for gpu, -1 for cpu
 batch_size = 128
 test_mode = 0  # 0 for train+test 1 for test
 embedding_dim = 200

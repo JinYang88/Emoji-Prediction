@@ -26,7 +26,7 @@ hidden_dim = 100
 out_dim = 20
 epochs = 4
 print_every = 50
-
+min_freq = 2
 
 print('Reading data..')
 normalize_pipeline = data.Pipeline(convert_token=datahelper.normalizeString)
@@ -46,7 +46,7 @@ test = data.TabularDataset(
         fields=[('Id', ID), ('Text', TEXT), ('Label', LABEL)], skip_header=True)
 
 
-TEXT.build_vocab(train,valid,test, min_freq=3)
+TEXT.build_vocab(train,valid,test, min_freq=min_freq)
 print('Building vocabulary Finished.')
 
 

@@ -32,11 +32,11 @@ class bi_lstm(torch.nn.Module) :
         self.linearOut = nn.Linear(hidden_dim, out_dim)
     def forward(self,inputs) :
         x = self.embeddings(inputs)
-        lstm_out,lstm_h = self.lstm(x, None)
-        x = lstm_out[:, -1, :]
+        lstm_out,(lstm_h, lstm_c) = self.lstm(x, None)
+        x = torch.cat((lstm_h[0], lstm_h[1]), dim=1)
         x = self.linearOut(x)
         x = F.log_softmax(x, dim=1)
 
         return x
     def init_hidden(self) :
-        return (Variable(torch.zeros(1, self.batch_size, self.hidden_dim)),Variable(torch.zeros(1, self.batch_size, self.hidden_dim)))  
+        return (Variable(torch.zeros(1, self.batch_size, self.hidden_dim)),Variable(torch.zeros(1, self.batch_size, self.hidden_dim)))

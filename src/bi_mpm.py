@@ -75,7 +75,7 @@ test_dl = datahelper.BatchWrapper(test_iter, ["Text1", "Text2", "Label"])
 print('Reading data done.')
 
 print('Initialing model..')
-MODEL = model.bi_mpm(len(TEXT.vocab), len(TEXT.vocab), embedding_dim, hidden_dim, out_dim, perspective_dim, wordvec_matrix , batch_size)
+MODEL = model.bi_mpm(len(TEXT.vocab), len(TEXT.vocab), embedding_dim, hidden_dim, out_dim, perspective_dim, wordvec_matrix , batch_size, dtype)
 if device == 0:
     MODEL.cuda()
 

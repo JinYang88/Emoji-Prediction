@@ -174,7 +174,7 @@ class bi_mpm(torch.nn.Module) :
     
     def fm(self, v1, v2, W):
         v1s = torch.mul(W, v1)
-        v2s = torch.mul(W * v2)
+        v2s = torch.mul(W, v2)
         m_v = torch.cat([self.cosine_sim(v1s[k], v2s[k]) for k in range(v1s.shape[0])])
         return m_v.view(1,-1)        
 

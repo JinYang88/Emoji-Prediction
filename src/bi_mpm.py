@@ -21,7 +21,7 @@ from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_sc
 torch.manual_seed(42)
 
 
-device = 9 # 0 for gpu, -1 for cpu
+device = 0 # 0 for gpu, -1 for cpu
 batch_size = 4
 test_mode = 0  # 0 for train+test 1 for test
 embedding_dim = 300
@@ -109,18 +109,19 @@ if not test_mode:
             optimizer.step()
             batch_count += 1
             if batch_count % print_every == 0:
-                MODEL = MODEL.train(False)
-                final_res = []
-                final_labels = []
-                for text1, text2, label in valid_dl:
-                    y_pred = MODEL(text1,text2)
-                    y_pred = np.array([1 if _ > 0.5 else 0 for _ in y_pred.cpu().data.numpy()])
-                    final_res.extend(y_pred)
-                    final_labels.extend(list(label.cpu().data))
-                acc = accuracy_score(final_res, final_labels)
-                batch_end = time.time()
-                MODEL = MODEL.train(True)
-                print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. Valid_acc is {}, loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), acc ,float(loss)))
+                print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. '.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2)))
+                # MODEL = MODEL.train(False)
+                # final_res = []
+                # final_labels = []
+                # for text1, text2, label in valid_dl:
+                #     y_pred = MODEL(text1,text2)
+                #     y_pred = np.array([1 if _ > 0.5 else 0 for _ in y_pred.cpu().data.numpy()])
+                #     final_res.extend(y_pred)
+                #     final_labels.extend(list(label.cpu().data))
+                # acc = accuracy_score(final_res, final_labels)
+                # batch_end = time.time()
+                # MODEL = MODEL.train(True)
+                # print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. Valid_acc is {}, loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), acc ,float(loss)))
         torch.save(MODEL.state_dict(), 'model' + str(i+1)+'.pth')
 
 

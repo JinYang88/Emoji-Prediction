@@ -44,7 +44,7 @@ class bi_lstm(torch.nn.Module) :
 
 
 class bi_mpm(torch.nn.Module) :
-    def __init__(self, vocab_size, emoji_size, embedding_dim, hidden_dim, out_dim, perspective_dim, wordvec_matrix, batch_size) :
+    def __init__(self, vocab_size, emoji_size, embedding_dim, hidden_dim, out_dim, perspective_dim, wordvec_matrix, batch_size, dtype) :
         super(bi_mpm,self).__init__()
         self.hidden_dim = hidden_dim
         self.batch_size = batch_size

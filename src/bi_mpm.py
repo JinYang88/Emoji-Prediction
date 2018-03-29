@@ -21,14 +21,14 @@ from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_sc
 torch.manual_seed(42)
 
 
-device = -1 # 0 for gpu, -1 for cpu
-batch_size = 2
+device = 9 # 0 for gpu, -1 for cpu
+batch_size = 4
 test_mode = 0  # 0 for train+test 1 for test
 embedding_dim = 300
 hidden_dim = 100
 out_dim = 1
 epochs = 1
-print_every = 1
+print_every = 10
 dtype = torch.FloatTensor if device == -1 else torch.cuda.FloatTensor
 perspective_dim = 6
 

@@ -64,15 +64,22 @@ for idx, word in enumerate(text_vocab.itos):
     word_vec_list.append(torch.from_numpy(vector))
 wordvec_matrix = torch.cat(word_vec_list)
 
+
 train_iter = data.BucketIterator(dataset=train, batch_size=batch_size, sort_key=lambda x: len(x.Text1) + len(x.Text2), device=device, repeat=False)
-valid_iter = data.Iterator(dataset=valid, batch_size=len(valid.examples), device=device, shuffle=False, repeat=False)
-test_iter = data.Iterator(dataset=test, batch_size=len(test.examples), device=device, shuffle=False, repeat=False)
+valid_iter = data.Iterator(dataset=valid, batch_size=batch_size, device=device, shuffle=False, repeat=False)
+test_iter = data.Iterator(dataset=test, batch_size=batch_size, device=device, shuffle=False, repeat=False)
 
 
 train_dl = datahelper.BatchWrapper(train_iter, ["Text1", "Text2", "Label"])
 valid_dl = datahelper.BatchWrapper(valid_iter, ["Text1", "Text2", "Label"])
 test_dl = datahelper.BatchWrapper(test_iter, ["Text1", "Text2", "Label"])
 print('Reading data done.')
+
+train_dl = datahelper.BatchWrapper(train_iter, ["Text1", "Text2", "Label"])
+valid_dl = datahelper.BatchWrapper(valid_iter, ["Text1", "Text2", "Label"])
+test_dl = datahelper.BatchWrapper(test_iter, ["Text1", "Text2", "Label"])
+print('Reading data done.')
+
 
 print('Initialing model..')
 MODEL = model.bi_mpm(len(TEXT.vocab), len(TEXT.vocab), embedding_dim, hidden_dim, out_dim, perspective_dim, wordvec_matrix , batch_size, dtype)
@@ -103,10 +110,14 @@ if not test_mode:
             batch_count += 1
             if batch_count % print_every == 0:
                 MODEL = MODEL.train(False)
+                final_res = []
+                final_labels = []
                 for text1, text2, label in valid_dl:
                     y_pred = MODEL(text1,text2)
                     y_pred = np.array([1 if _ > 0.5 else 0 for _ in y_pred.cpu().numpy()])
-                    acc = accuracy_score(y_pred, labels.cpu().data.numpy())
+                    final_res.extend(y_pred)
+                    final_labels.extend(list(label.cpu().data))
+                acc = accuracy_score(final_res, final_labels)
                 batch_end = time.time()
                 MODEL = MODEL.train(True)
                 print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. Valid_acc is {}, loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), acc ,float(loss)))

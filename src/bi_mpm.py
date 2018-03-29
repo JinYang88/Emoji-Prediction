@@ -114,7 +114,7 @@ if not test_mode:
                 final_labels = []
                 for text1, text2, label in valid_dl:
                     y_pred = MODEL(text1,text2)
-                    y_pred = np.array([1 if _ > 0.5 else 0 for _ in y_pred.cpu().numpy()])
+                    y_pred = np.array([1 if _ > 0.5 else 0 for _ in y_pred.cpu().data.numpy()])
                     final_res.extend(y_pred)
                     final_labels.extend(list(label.cpu().data))
                 acc = accuracy_score(final_res, final_labels)
@@ -133,7 +133,7 @@ final_res = []
 final_labels = []
 for text1, text2, label in test_dl:
     y_pred = MODEL(text1,text2)
-    y_pred = np.array([1 if _ > 0.5 else 0 for _ in y_pred.cpu().numpy()])
+    y_pred = np.array([1 if _ > 0.5 else 0 for _ in y_pred.cpu().data.numpy()])
     final_res.extend(y_pred)
     final_labels.extend(list(label.cpu().data))
 

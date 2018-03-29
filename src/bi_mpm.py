@@ -109,6 +109,7 @@ if not test_mode:
             optimizer.step()
             batch_count += 1
             if batch_count % print_every == 0:
+                batch_end = time.time()
                 print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. '.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2)))
                 # MODEL = MODEL.train(False)
                 # final_res = []

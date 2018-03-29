@@ -44,7 +44,7 @@ class bi_lstm(torch.nn.Module) :
 
 
 class bi_mpm(torch.nn.Module) :
-    def __init__(self, vocab_size, emoji_size, embedding_dim, hidden_dim, out_dim, perspective_dim, wordvec_matrix, batch_size, dtype) :
+    def __init__(self, vocab_size, emoji_size, embedding_dim, hidden_dim, out_dim, perspective_dim, wordvec_matrix, batch_size, device) :
         super(bi_mpm,self).__init__()
         self.hidden_dim = hidden_dim
         self.batch_size = batch_size
@@ -60,9 +60,12 @@ class bi_mpm(torch.nn.Module) :
         self.word_lstm2 = nn.LSTM(perspective_dim * 2, hidden_dim//2, batch_first=True, bidirectional=True, dropout=0.1)
         self.emoji_lstm2 = nn.LSTM(perspective_dim * 2, hidden_dim//2, batch_first=True, bidirectional=True, dropout=0.1)
         
-                
-        self.W1 = torch.nn.Parameter(torch.randn(perspective_dim, hidden_dim//2), requires_grad=True).type(dtype)
-        self.W2 = torch.nn.Parameter(torch.randn(perspective_dim, hidden_dim//2), requires_grad=True).type(dtype)
+        if device == 0: 
+            self.W1 = torch.nn.Parameter(torch.randn(perspective_dim, hidden_dim//2).cuda(), requires_grad=True)
+            self.W2 = torch.nn.Parameter(torch.randn(perspective_dim, hidden_dim//2).cuda(), requires_grad=True)
+        else:
+            self.W1 = torch.nn.Parameter(torch.randn(perspective_dim, hidden_dim//2), requires_grad=True)
+            self.W2 = torch.nn.Parameter(torch.randn(perspective_dim, hidden_dim//2), requires_grad=True)
         # self.W3 = torch.nn.Parameter(torch.randn(perspective_dim, hidden_dim//2), requires_grad=True).type(dtype)
         # self.W4 = torch.nn.Parameter(torch.randn(perspective_dim, hidden_dim//2), requires_grad=True).type(dtype)
         # self.W5 = torch.nn.Parameter(torch.randn(perspective_dim, hidden_dim//2), requires_grad=True).type(dtype)

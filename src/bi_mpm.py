@@ -29,7 +29,6 @@ hidden_dim = 100
 out_dim = 1
 epochs = 1
 print_every = 10
-dtype = torch.FloatTensor if device == -1 else torch.cuda.FloatTensor
 perspective_dim = 6
 
 
@@ -82,7 +81,7 @@ print('Reading data done.')
 
 
 print('Initialing model..')
-MODEL = model.bi_mpm(len(TEXT.vocab), len(TEXT.vocab), embedding_dim, hidden_dim, out_dim, perspective_dim, wordvec_matrix , batch_size, dtype)
+MODEL = model.bi_mpm(len(TEXT.vocab), len(TEXT.vocab), embedding_dim, hidden_dim, out_dim, perspective_dim, wordvec_matrix , batch_size, device)
 if device == 0:
     MODEL.cuda()
 

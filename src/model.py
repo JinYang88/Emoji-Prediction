@@ -162,6 +162,7 @@ class bi_mpm(torch.nn.Module) :
                 # final_8_vecs = torch.cat([m_full_for, m_full_bac, m_max_for, m_max_bac, 
                 #                           m_attentive_for, m_attentive_bac, m_max_attentive_for,
                 #                           m_max_attentive_bac],dim=1)
+
                 final_8_vecs = torch.cat([m_full_for, m_full_bac], dim=1)
                 emoji_stamps.append(final_8_vecs)
         emoji_stamps = torch.cat(emoji_stamps)
@@ -172,7 +173,8 @@ class bi_mpm(torch.nn.Module) :
         return sim
     
     def fm(self, v1, v2, W):
-        v1s = W * v1
-        v2s = W * v2
-        m_v = torch.stack([self.cosine_sim(v1s[k], v2s[k]) for k in range(v1s.shape[0])])
+        v1s = torch.mul(W, v1)
+        v2s = torch.mul(W * v2)
+        m_v = torch.cat([self.cosine_sim(v1s[k], v2s[k]) for k in range(v1s.shape[0])])
         return m_v.view(1,-1)        
+

@@ -57,8 +57,8 @@ class bi_mpm(torch.nn.Module) :
 
         self.word_lstm = nn.LSTM(embedding_dim, hidden_dim//2, batch_first=True, bidirectional=True, dropout=0.1)
         self.emoji_lstm = nn.LSTM(embedding_dim, hidden_dim//2, batch_first=True, bidirectional=True, dropout=0.1)
-        self.word_lstm2 = nn.LSTM(perspective_dim * 8, hidden_dim//2, batch_first=True, bidirectional=True, dropout=0.1)
-        self.emoji_lstm2 = nn.LSTM(perspective_dim * 8, hidden_dim//2, batch_first=True, bidirectional=True, dropout=0.1)
+        self.word_lstm2 = nn.LSTM(perspective_dim * 2, hidden_dim//2, batch_first=True, bidirectional=True, dropout=0.1)
+        self.emoji_lstm2 = nn.LSTM(perspective_dim * 2, hidden_dim//2, batch_first=True, bidirectional=True, dropout=0.1)
         
                 
         self.W1 = torch.nn.Parameter(torch.randn(perspective_dim, hidden_dim//2), requires_grad=True).type(dtype)

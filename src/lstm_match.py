@@ -130,7 +130,7 @@ if not test_mode:
                 for text, emoji, label in valid_dl:
                     MODEL = MODEL.train(False)
                     seq_embedding, emoji_embedding = MODEL(text, emoji.view(-1,1), None)
-                    loss += loss_func(seq_embedding, emoji_embedding, label.view(-1,1))
+                    loss += loss_func(seq_embedding.squeeze(1), emoji_embedding.squeeze(1), label.view(-1,1))
                 batch_end = time.time()
                 MODEL = MODEL.train(True)
                 print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2) ,float(loss)))

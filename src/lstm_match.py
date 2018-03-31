@@ -38,7 +38,7 @@ normalize_pipeline = data.Pipeline(convert_token=datahelper.normalizeString)
 ID = data.Field(sequential=False, batch_first=True, use_vocab=False)
 EMOJI = data.Field(sequential=False, batch_first=True, use_vocab=False)
 TEXT = data.Field(sequential=True, lower=True, eos_token='<EOS>', init_token='<BOS>',
-                  pad_token='<PAD>', fix_length=None, batch_first=True, preprocessing=normalize_pipeline)
+                  pad_token='<PAD>', fix_length=None, batch_first=True)
 LABEL = data.Field(sequential=False, batch_first=True, use_vocab=False)
 
 

@@ -21,7 +21,7 @@ from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_sc
 test_mode = 0  # 0 for train+test 1 for test
 device = 0 # 0 for gpu, -1 for cpu
 
-bidirectional = False
+bidirectional = True
 emoji_num = 5
 embedding_dim = 100
 hidden_dim = 100
@@ -162,7 +162,7 @@ if not test_mode:
         train_iter.init_epoch()
         batch_count = 0
         for text, emoji, label in train_dl:
-            hidden_state = MODEL.init_hidden(text.size()[0])
+            hidden_state = MODEL.init_hidden(text.size()[0], device)
             similarity = MODEL(text, emoji.view(-1,1), hidden_state)
             loss = loss_func(similarity, label.view(-1,1).float())
             loss.backward()
@@ -177,7 +177,7 @@ if not test_mode:
         torch.save(MODEL.state_dict(), 'model' + str(i+1)+'.pth')           
         print("Saving model..")
 
-        
+
 loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.MSELoss(), device, 'model{}.pth'.format(1))
 
 print("=================")

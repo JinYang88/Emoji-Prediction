@@ -18,8 +18,8 @@ import datahelper
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
 
 
-test_mode = 1  # 0 for train+test 1 for test
-device = -1 # 0 for gpu, -1 for cpu
+test_mode = 0  # 0 for train+test 1 for test
+device = 0 # 0 for gpu, -1 for cpu
 
 bidirectional = True
 emoji_num = 20
@@ -28,9 +28,9 @@ hidden_dim = embedding_dim
 out_dim = 1
 p_dropout = 0.1
 
-batch_size = 32
-epochs = 4
-print_every = 50
+batch_size = 64
+epochs = 1
+print_every = 1000
 
 
 print('Reading data..')

@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-topn = 20
+topn = 5
 datasets = ['train','valid','test']
 negtive = [0,1,2,3,4]
 all_recommend = range(topn)

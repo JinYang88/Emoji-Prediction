@@ -104,7 +104,7 @@ def predict_on(model, data_dl, model_state_path=None):
         loss += loss_function(y_pred, labels)
         y_pred = y_pred.data.max(1)[1].cpu().numpy()
         res_list.extend(y_pred)
-        label_list.extend(labels)
+        label_list.extend(labels.data.cpu().numpy())
 
     acc = accuracy_score(res_list, label_list)
     Precision = precision_score(res_list, label_list, average="macro")
@@ -113,9 +113,10 @@ def predict_on(model, data_dl, model_state_path=None):
     F1_micro = f1_score(res_list, label_list, average="micro")
 
     if model_state_path:
-        with open('BLSTM-Prediction-Result.txt', 'w') as fw:
+        with open('BLSTM-Result.txt', 'w') as fw:
             for line in res_list:
                 fw.write(str(line) + '\n')
+    return loss, (acc, Precision, Recall, F1_macro, F1_micro)
 
 
 print('Initialing model..')

@@ -136,10 +136,11 @@ class lstm_match(torch.nn.Module) :
         
     
     def init_hidden(self, batch_size, device) :
+        layer_num = 2 if self.bidirectional else 1
         if device == -1:
-            return (Variable(torch.randn(1, batch_size, self.hidden_dim)),Variable(torch.randn(1, batch_size, self.hidden_dim)))  
+            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim)),Variable(torch.randn(layer_num, batch_size, self.hidden_dim)))  
         else:
-            return (Variable(torch.randn(1, batch_size, self.hidden_dim)).cuda(),Variable(torch.randn(1, batch_size, self.hidden_dim)).cuda())  
+            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim)).cuda(),Variable(torch.randn(layer_num, batch_size, self.hidden_dim)).cuda())  
 
 
 print('Initialing model..')

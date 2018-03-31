@@ -121,6 +121,7 @@ def predict_on(model, data_dl, model_state_path=None):
     answer_df = result_df.loc[result_df.groupby("id")['similarity'].idxmax().values][['id','emoji']].rename(columns={"emoji":"prediction"})
     ground_truth_df = result_df[result_df['label']==1].rename(columns={"emoji":"groundtruth"})
     final_df = answer_df.merge(ground_truth_df, on="id")
+    final_df.to_csv("lstm_match_results.csv", index=False)
     acc = accuracy_score(final_df['prediction'], final_df['groundtruth'])
     Precision = precision_score(final_df['prediction'], final_df['groundtruth'], average="macro")
     Recall = recall_score(final_df['prediction'], final_df['groundtruth'], average="macro")

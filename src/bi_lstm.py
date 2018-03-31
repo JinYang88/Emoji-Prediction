@@ -55,9 +55,9 @@ valid_iter = data.Iterator(dataset=valid, batch_size=len(valid.examples), device
 test_iter = data.Iterator(dataset=test, batch_size=len(test.examples), device=device, shuffle=False, repeat=False)
 
 
-train_dl = datahelper.BatchWrapper(train_iter, "Text", ["Label"])
-valid_dl = datahelper.BatchWrapper(valid_iter, "Text", ["Label"])
-test_dl = datahelper.BatchWrapper(test_iter, "Text", ["Label"])
+train_dl = datahelper.BatchWrapper(train_iter, ["Text", "Label"])
+valid_dl = datahelper.BatchWrapper(valid_iter, ["Text", "Label"])
+test_dl = datahelper.BatchWrapper(test_iter, ["Text", "Label"])
 print('Reading data done.')
 
 

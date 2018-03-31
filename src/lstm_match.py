@@ -57,8 +57,8 @@ print('Building vocabulary Finished.')
 
 
 train_iter = data.BucketIterator(dataset=train, batch_size=batch_size, sort_key=lambda x: len(x.Text), device=device, repeat=False)
-valid_iter = data.Iterator(dataset=valid, batch_size=len(valid.examples), device=device, shuffle=False, repeat=False)
-test_iter = data.Iterator(dataset=test, batch_size=len(test.examples), device=device, shuffle=False, repeat=False)
+valid_iter = data.Iterator(dataset=valid, batch_size=batch_size, device=device, shuffle=False, repeat=False)
+test_iter = data.Iterator(dataset=test, batch_size=batch_size, device=device, shuffle=False, repeat=False)
 
 train_dl = datahelper.BatchWrapper(train_iter, ["Text", "Emoji", "Label"])
 valid_dl = datahelper.BatchWrapper(valid_iter, ["Id", "Text", "Emoji", "Label"])
@@ -83,12 +83,14 @@ class lstm_match(torch.nn.Module) :
         emoji_embedding = self.emoji_embedding(emoji)
         lstm_out,(lstm_h, lstm_c) = self.lstm(word_embedding, hidden_init)
         
+#         print(lstm_h)
         
         if self.bidirectional:
             seq_embedding = torch.cat((lstm_h[0], lstm_h[1]), dim=1)
         else:
             seq_embedding = lstm_h.view(self.batch_size,1,-1)
             
+#         print(seq_embedding.size(), emoji_embedding.size())
 
         return seq_embedding, emoji_embedding
         
@@ -107,20 +109,28 @@ def predict_on(model, data_dl, model_state_path=None):
     loss_func = nn.CosineEmbeddingLoss()
     model = MODEL.eval()
     result_list = []  # id, emoji, similarity, label
+    id_list = []
+    emoji_list = []
+    similarity_list = []
+    labels_list = []
     for ids, text, emoji, label in data_dl:
         seq_embedding, emoji_embedding = MODEL(text, emoji.view(-1,1), None)
         p_pred = F.cosine_similarity(seq_embedding.squeeze(1), emoji_embedding.squeeze(1))
         loss = loss_func(seq_embedding.squeeze(1), emoji_embedding.squeeze(1), label.view(-1,1))
-        result_nparr = ids.data.cpu().numpy(), emoji.data.cpu().numpy(), p_pred.data.cpu().numpy(), label.data.cpu().numpy()
+        id_list.extend(ids.data.cpu().numpy())
+        emoji_list.extend(emoji.data.cpu().numpy())
+        similarity_list.extend(p_pred.data.cpu().numpy())
+        labels_list.extend(label.data.cpu().numpy())
+        
+        
     result_df = pd.DataFrame()
-    result_df['id'] = result_nparr[0]
-    result_df['emoji'] = result_nparr[1]
-    result_df['similarity'] = result_nparr[2]
-    result_df['label'] = result_nparr[3]
+    result_df['id'] = id_list
+    result_df['emoji'] = emoji_list
+    result_df['similarity'] = similarity_list
+    result_df['label'] = labels_list
     answer_df = result_df.loc[result_df.groupby("id")['similarity'].idxmax().values][['id','emoji']].rename(columns={"emoji":"prediction"})
     ground_truth_df = result_df[result_df['label']==1].rename(columns={"emoji":"groundtruth"})
     final_df = answer_df.merge(ground_truth_df, on="id")
-    final_df.to_csv("lstm_match_results.csv", index=False)
     acc = accuracy_score(final_df['prediction'], final_df['groundtruth'])
     Precision = precision_score(final_df['prediction'], final_df['groundtruth'], average="macro")
     Recall = recall_score(final_df['prediction'], final_df['groundtruth'], average="macro")

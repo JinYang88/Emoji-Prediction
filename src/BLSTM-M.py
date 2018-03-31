@@ -67,6 +67,45 @@ print('Reading data done.')
 
 
 
+# data_dl: id, text, emoji, label
+def predict_on(model, data_dl, model_state_path=None):
+    if model_state_path:
+        model.load_state_dict(torch.load(model_state_path))
+        print('Start predicting...')
+
+    loss_func = nn.CosineEmbeddingLoss()
+    model = MODEL.eval()
+    result_list = []  # id, emoji, similarity, label
+    id_list = []
+    emoji_list = []
+    similarity_list = []
+    labels_list = []
+    for ids, text, emoji, label in data_dl:
+        seq_embedding, emoji_embedding = MODEL(text, emoji.view(-1,1), None)
+        p_pred = F.cosine_similarity(seq_embedding.squeeze(1), emoji_embedding.squeeze(1))
+        loss = loss_func(seq_embedding.squeeze(1), emoji_embedding.squeeze(1), label.view(-1,1))
+        id_list.extend(ids.data.cpu().numpy())
+        emoji_list.extend(emoji.data.cpu().numpy())
+        similarity_list.extend(p_pred.data.cpu().numpy())
+        labels_list.extend(label.data.cpu().numpy())
+        
+        
+    result_df = pd.DataFrame()
+    result_df['id'] = id_list
+    result_df['emoji'] = emoji_list
+    result_df['similarity'] = similarity_list
+    result_df['label'] = labels_list
+    answer_df = result_df.loc[result_df.groupby("id")['similarity'].idxmax().values][['id','emoji']].rename(columns={"emoji":"prediction"})
+    ground_truth_df = result_df[result_df['label']==1].rename(columns={"emoji":"groundtruth"})
+    final_df = answer_df.merge(ground_truth_df, on="id")
+    acc = accuracy_score(final_df['prediction'], final_df['groundtruth'])
+    Precision = precision_score(final_df['prediction'], final_df['groundtruth'], average="macro")
+    Recall = recall_score(final_df['prediction'], final_df['groundtruth'], average="macro")
+    F1_macro = f1_score(final_df['prediction'], final_df['groundtruth'], average="macro")
+    F1_micro = f1_score(final_df['prediction'], final_df['groundtruth'], average="micro")
+    return loss, (acc, Precision, Recall, F1_macro, F1_micro)
+
+
 class lstm_match(torch.nn.Module) :
     def __init__(self, vocab_size, emoji_num, embedding_dim, hidden_dim, batch_size, bidirectional, dropout):
         super(lstm_match,self).__init__()
@@ -83,12 +122,12 @@ class lstm_match(torch.nn.Module) :
         emoji_embedding = self.emoji_embedding(emoji)
         lstm_out,(lstm_h, lstm_c) = self.lstm(word_embedding, hidden_init)
         
-        
         if self.bidirectional:
             seq_embedding = torch.cat((lstm_h[0], lstm_h[1]), dim=1)
         else:
-            seq_embedding = lstm_h.view(self.batch_size,1,-1)
+            seq_embedding = lstm_h.view(-1,1,self.hidden_dim)
             
+#         print(seq_embedding.size(), emoji_embedding.size())
 
         return seq_embedding, emoji_embedding
         
@@ -97,47 +136,6 @@ class lstm_match(torch.nn.Module) :
         return (Variable(torch.randn(batch_size, batch_size, self.hidden_dim)),Variable(torch.randn(1, batch_size, self.hidden_dim)))  
 
 
-    
-# data_dl: id, text, emoji, label
-def predict_on(model, data_dl, model_state_path=None):
-    if model_state_path:
-        model.load_state_dict(torch.load(model_state_path))
-        print('Start predicting...')
-
-    loss_func = nn.CosineEmbeddingLoss()
-    model = MODEL.eval()
-    result_list = []  # id, emoji, similarity, label
-    id_list = []
-    emoji_list = []
-    similarity_list = []
-    labels_list = []
-    loss = 0
-    for ids, text, emoji, label in data_dl:
-        seq_embedding, emoji_embedding = MODEL(text, emoji.view(-1,1), None)
-        p_pred = F.cosine_similarity(seq_embedding.squeeze(1), emoji_embedding.squeeze(1))
-        loss += loss_func(seq_embedding.squeeze(1), emoji_embedding.squeeze(1), label.view(-1,1))
-        id_list.extend(ids.data.cpu().numpy())
-        emoji_list.extend(emoji.data.cpu().numpy())
-        similarity_list.extend(p_pred.data.cpu().numpy())
-        labels_list.extend(label.data.cpu().numpy())
-        
-        
-    result_df = pd.DataFrame()
-    result_df['id'] = id_list
-    result_df['emoji'] = emoji_list
-    result_df['similarity'] = similarity_list
-    result_df['label'] = labels_list
-    answer_df = result_df.loc[result_df.groupby("id")['similarity'].idxmax().values][['id','emoji']].rename(columns={"emoji":"prediction"})
-    ground_truth_df = result_df[result_df['label']==1].rename(columns={"emoji":"groundtruth"})
-    final_df = answer_df.merge(ground_truth_df, on="id")
-    if model_state_path:
-        final_df.to_csv("lstm_match_results.csv", index=False)
-    acc = accuracy_score(final_df['prediction'], final_df['groundtruth'])
-    Precision = precision_score(final_df['prediction'], final_df['groundtruth'], average="macro")
-    Recall = recall_score(final_df['prediction'], final_df['groundtruth'], average="macro")
-    F1_macro = f1_score(final_df['prediction'], final_df['groundtruth'], average="macro")
-    F1_micro = f1_score(final_df['prediction'], final_df['groundtruth'], average="micro")
-    return loss, (acc, Precision, Recall, F1_macro, F1_micro)
 
 
 print('Initialing model..')
@@ -174,8 +172,8 @@ if not test_mode:
                 MODEL = MODEL.train(True)
 
 
-
 loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, 'lstm_match_model{}.pth'.format(epochs))
+
 
 print("=================")
 print("Evaluation results on test dataset:")

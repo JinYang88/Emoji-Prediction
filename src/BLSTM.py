@@ -29,7 +29,8 @@ print_every = 1000
 p_dropout = 0.5
 embedding_dim = 100
 hidden_dim = 100
-out_dim = 20
+emoji_num = 20
+out_dim = emoji_num
 
 
 
@@ -37,17 +38,17 @@ print('Reading data..')
 normalize_pipeline = data.Pipeline(convert_token=datahelper.normalizeString)
 ID = data.Field(sequential=False, batch_first=True, use_vocab=False)
 TEXT = data.Field(sequential=True, lower=True, eos_token='<EOS>', init_token='<BOS>',
-                  pad_token='<PAD>', fix_length=None, batch_first=True, preprocessing=normalize_pipeline)
+                  pad_token='<PAD>', fix_length=None, batch_first=True)
 LABEL = data.Field(sequential=False, batch_first=True, use_vocab=False)
 
 train = data.TabularDataset(
-        path='../data/tweet/multi/top20/train.csv', format='csv',
+        path='../data/tweet/multi/top{}/train.csv'.format(emoji_num), format='csv',
         fields=[('Id', ID), ('Text', TEXT), ('Label', LABEL)], skip_header=True)
 valid = data.TabularDataset(
-        path='../data/tweet/multi/top20/valid.csv', format='csv',
+        path='../data/tweet/multi/top{}/valid.csv'.format(emoji_num), format='csv',
         fields=[('Id', ID), ('Text', TEXT), ('Label', LABEL)], skip_header=True)
 test = data.TabularDataset(
-        path='../data/tweet/multi/top20/test.csv', format='csv',
+        path='../data/tweet/multi/top{}/test.csv'.format(emoji_num), format='csv',
         fields=[('Id', ID), ('Text', TEXT), ('Label', LABEL)], skip_header=True)
 
 
@@ -123,7 +124,7 @@ print('Initialing model..')
 MODEL = bi_lstm(len(TEXT.vocab), embedding_dim, hidden_dim, out_dim, batch_size, p_dropout)
 if device == 0:
     MODEL.cuda()
-    
+
 
 # Train
 if not test_mode:

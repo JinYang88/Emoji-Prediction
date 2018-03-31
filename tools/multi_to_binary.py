@@ -8,7 +8,7 @@ all_recommend = range(topn)
 # datasets = ['test']
 
 for dataset in datasets:
-    data = pd.read_csv("../data/tweet/multi/top20/{}.csv".format(dataset))
+    data = pd.read_csv("../data/tweet/multi/top{}/{}.csv".format(topn, dataset))
     if dataset == "train":
         samples = negtive
     else:

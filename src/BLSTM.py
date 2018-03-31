@@ -19,13 +19,18 @@ from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_sc
 
 
 device = 0 # 0 for gpu, -1 for cpu
-batch_size = 64
 test_mode = 0  # 0 for train+test 1 for test
+
+
+batch_size = 64
+epochs = 1
+print_every = 1000
+
+p_dropout = 0.5
 embedding_dim = 100
 hidden_dim = 100
 out_dim = 20
-epochs = 1
-print_every = 1000
+
 
 
 print('Reading data..')
@@ -51,8 +56,8 @@ print('Building vocabulary Finished.')
 
 
 train_iter = data.BucketIterator(dataset=train, batch_size=batch_size, sort_key=lambda x: len(x.Text), device=device, repeat=False)
-valid_iter = data.Iterator(dataset=valid, batch_size=len(valid.examples), device=device, shuffle=False, repeat=False)
-test_iter = data.Iterator(dataset=test, batch_size=len(test.examples), device=device, shuffle=False, repeat=False)
+valid_iter = data.Iterator(dataset=valid, batch_size=batch_size, device=device, shuffle=False, repeat=False)
+test_iter = data.Iterator(dataset=test, batch_size=batch_size, device=device, shuffle=False, repeat=False)
 
 
 train_dl = datahelper.BatchWrapper(train_iter, ["Text", "Label"])
@@ -61,10 +66,63 @@ test_dl = datahelper.BatchWrapper(test_iter, ["Text", "Label"])
 print('Reading data done.')
 
 
+
+class bi_lstm(torch.nn.Module) :
+    def __init__(self,vocab_size, embedding_dim, hidden_dim, out_dim, batch_size, p_dropout) :
+        super(bi_lstm,self).__init__()
+        self.hidden_dim = hidden_dim
+        self.batch_size = batch_size
+        self.embeddings = nn.Embedding(vocab_size, embedding_dim)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim//2, batch_first=True, bidirectional=True, dropout=p_dropout)
+        self.linearOut = nn.Linear(hidden_dim, out_dim)
+    def forward(self,inputs) :
+        x = self.embeddings(inputs)
+        lstm_out,(lstm_h, lstm_c) = self.lstm(x, None)
+        x = torch.cat((lstm_h[0], lstm_h[1]), dim=1)
+        x = self.linearOut(x)
+        x = F.log_softmax(x, dim=1)
+
+        return x
+    def init_hidden(self) :
+        return (Variable(torch.zeros(1, self.batch_size, self.hidden_dim)),Variable(torch.zeros(1, self.batch_size, self.hidden_dim)))
+
+
+def predict_on(model, data_dl, model_state_path=None):
+    if model_state_path:
+        model.load_state_dict(torch.load(model_state_path))
+        print('Start predicting...')
+
+    model = model.eval()
+    res_list = []
+    label_list = []
+    loss = 0
+    loss_function = nn.NLLLoss()
+    
+
+    for texts, labels in data_dl:
+        y_pred = MODEL(texts)
+        loss += loss_function(y_pred, labels)
+        y_pred = y_pred.data.max(1)[1].cpu().numpy()
+        res_list.extend(y_pred)
+        label_list.extend(labels)
+
+    acc = accuracy_score(res_list, label_list)
+    Precision = precision_score(res_list, label_list, average="macro")
+    Recall = recall_score(res_list, label_list, average="macro")
+    F1_macro = f1_score(res_list, label_list, average="macro")
+    F1_micro = f1_score(res_list, label_list, average="micro")
+
+    if model_state_path:
+        with open('BLSTM-Prediction-Result.txt', 'w') as fw:
+            for line in res_list:
+                fw.write(str(line) + '\n')
+
+
 print('Initialing model..')
-MODEL = model.bi_lstm(len(TEXT.vocab), embedding_dim, hidden_dim, out_dim, batch_size)
+MODEL = bi_lstm(len(TEXT.vocab), embedding_dim, hidden_dim, out_dim, batch_size, p_dropout)
 if device == 0:
     MODEL.cuda()
+    
 
 # Train
 if not test_mode:
@@ -77,10 +135,10 @@ if not test_mode:
 
     batch_start = time.time()
     for i in range(epochs) :
-        avg_loss = 0.0
         train_iter.init_epoch()
         batch_count = 0
         for batch, label in train_dl:
+            MODEL = MODEL.train(True)
             y_pred = MODEL(batch)
             loss = loss_function(y_pred, label)
             MODEL.zero_grad()
@@ -88,40 +146,18 @@ if not test_mode:
             optimizer.step()
             batch_count += 1
             if batch_count % print_every == 0:
-                for batch, labels in valid_dl:
-                    MODEL = MODEL.train(False)
-                    y_pred = MODEL(batch)
-                    y_pred = y_pred.data.max(1)[1].cpu().numpy()
-                    acc = accuracy_score(y_pred, labels.cpu().data.numpy())
+                loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, valid_dl)
                 batch_end = time.time()
-                MODEL = MODEL.train(True)
-                print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. Valid_acc is {}, loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), acc ,float(loss)))
+                print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_macro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_macro, float(loss)))
         torch.save(MODEL.state_dict(), 'model' + str(i+1)+'.pth')           
 
 
 # Test
-print('Start predicting...')
-MODEL.load_state_dict(torch.load('model{}.pth'.format(epochs)))
-MODEL = MODEL.eval()
-
-final_res = []
-final_labels = []
-for batch, label in test_dl:
-    hidden = MODEL.init_hidden()
-    y_pred = MODEL(batch)
-    pred_res = y_pred.data.max(1)[1].cpu().numpy()
-    final_res.extend(pred_res)
-    final_labels.extend(list(label.cpu().data))
-
-
-acc = accuracy_score(final_res, final_labels)
-Precision = precision_score(final_res, final_labels, average="macro")
-Recall = recall_score(final_res, final_labels, average="macro")
-F1_macro = f1_score(final_res, final_labels, average="macro")
-F1_micro = f1_score(final_res, final_labels, average="micro")
+loss, (acc, Precision, Recall, F1_macro, F1_micro)  = predict_on(MODEL, test_dl, 'model{}.pth'.format(epochs))
 
 print("=================")
 print("Evaluation results on test dataset:")
+print("Loss: {}.".format(float(loss)))
 print("Accuracy: {}.".format(acc))
 print("Precision: {}.".format(Precision))
 print("Recall: {}.".format(Recall))
@@ -130,9 +166,5 @@ print("\n")
 print("F1_macro: {}.".format(F1_macro))
 print("=================")
 
-
-with open('Prediction-Result.txt', 'w') as fw:
-    for line in final_res:
-        fw.write(str(line) + '\n')
 
 

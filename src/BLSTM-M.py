@@ -83,14 +83,12 @@ class lstm_match(torch.nn.Module) :
         emoji_embedding = self.emoji_embedding(emoji)
         lstm_out,(lstm_h, lstm_c) = self.lstm(word_embedding, hidden_init)
         
-#         print(lstm_h)
         
         if self.bidirectional:
             seq_embedding = torch.cat((lstm_h[0], lstm_h[1]), dim=1)
         else:
             seq_embedding = lstm_h.view(self.batch_size,1,-1)
             
-#         print(seq_embedding.size(), emoji_embedding.size())
 
         return seq_embedding, emoji_embedding
         
@@ -113,10 +111,11 @@ def predict_on(model, data_dl, model_state_path=None):
     emoji_list = []
     similarity_list = []
     labels_list = []
+    loss = 0
     for ids, text, emoji, label in data_dl:
         seq_embedding, emoji_embedding = MODEL(text, emoji.view(-1,1), None)
         p_pred = F.cosine_similarity(seq_embedding.squeeze(1), emoji_embedding.squeeze(1))
-        loss = loss_func(seq_embedding.squeeze(1), emoji_embedding.squeeze(1), label.view(-1,1))
+        loss += loss_func(seq_embedding.squeeze(1), emoji_embedding.squeeze(1), label.view(-1,1))
         id_list.extend(ids.data.cpu().numpy())
         emoji_list.extend(emoji.data.cpu().numpy())
         similarity_list.extend(p_pred.data.cpu().numpy())
@@ -131,7 +130,8 @@ def predict_on(model, data_dl, model_state_path=None):
     answer_df = result_df.loc[result_df.groupby("id")['similarity'].idxmax().values][['id','emoji']].rename(columns={"emoji":"prediction"})
     ground_truth_df = result_df[result_df['label']==1].rename(columns={"emoji":"groundtruth"})
     final_df = answer_df.merge(ground_truth_df, on="id")
-    final_df.to_csv("lstm_match_results.csv", index=False)
+    if model_state_path:
+        final_df.to_csv("lstm_match_results.csv", index=False)
     acc = accuracy_score(final_df['prediction'], final_df['groundtruth'])
     Precision = precision_score(final_df['prediction'], final_df['groundtruth'], average="macro")
     Recall = recall_score(final_df['prediction'], final_df['groundtruth'], average="macro")
@@ -169,10 +169,9 @@ if not test_mode:
             if batch_count % print_every == 0:
                 loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, valid_dl)
                 batch_end = time.time()
-                MODEL = MODEL.train(True)
                 print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_macro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_macro, float(loss)))
-                print("Saving model..")
                 torch.save(MODEL.state_dict(), 'lstm_match_model{}.pth'.format(i+1))           
+                MODEL = MODEL.train(True)
 
 
 

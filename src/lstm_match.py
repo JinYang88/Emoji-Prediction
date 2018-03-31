@@ -28,7 +28,7 @@ hidden_dim = embedding_dim
 out_dim = 1
 p_dropout = 0.1
 
-batch_size = 64
+batch_size = 256
 epochs = 1
 print_every = 1000
 
@@ -160,8 +160,8 @@ if not test_mode:
                 batch_end = time.time()
                 MODEL = MODEL.train(True)
                 print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_macro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_macro, float(loss)))
-            torch.save(MODEL.state_dict(), 'lstm_match_model{}.pth'.format(i+1))           
-            print("Saving model..")
+                print("Saving model..")
+                torch.save(MODEL.state_dict(), 'lstm_match_model{}.pth'.format(i+1))           
 
 
 

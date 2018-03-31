@@ -19,13 +19,13 @@ from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_sc
 
 
 device = 0 # 0 for gpu, -1 for cpu
-batch_size = 32
+batch_size = 64
 test_mode = 0  # 0 for train+test 1 for test
 embedding_dim = 100
 hidden_dim = 100
 out_dim = 20
-epochs = 4
-print_every = 50
+epochs = 1
+print_every = 1000
 
 
 print('Reading data..')

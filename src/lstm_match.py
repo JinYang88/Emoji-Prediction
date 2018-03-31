@@ -83,14 +83,12 @@ class lstm_match(torch.nn.Module) :
         emoji_embedding = self.emoji_embedding(emoji)
         lstm_out,(lstm_h, lstm_c) = self.lstm(word_embedding, hidden_init)
         
-#         print(lstm_h)
         
         if self.bidirectional:
             seq_embedding = torch.cat((lstm_h[0], lstm_h[1]), dim=1)
         else:
             seq_embedding = lstm_h.view(self.batch_size,1,-1)
             
-#         print(seq_embedding.size(), emoji_embedding.size())
 
         return seq_embedding, emoji_embedding
         

@@ -36,13 +36,13 @@ TEXT = data.Field(sequential=True, lower=True, eos_token='<EOS>', init_token='<B
 LABEL = data.Field(sequential=False, batch_first=True, use_vocab=False)
 
 train = data.TabularDataset(
-        path='../data/tweet/train.csv', format='csv',
+        path='../data/tweet/multi/top20/train.csv', format='csv',
         fields=[('Id', ID), ('Text', TEXT), ('Label', LABEL)], skip_header=True)
 valid = data.TabularDataset(
-        path='../data/tweet/valid.csv', format='csv',
+        path='../data/tweet/multi/top20/valid.csv', format='csv',
         fields=[('Id', ID), ('Text', TEXT), ('Label', LABEL)], skip_header=True)
 test = data.TabularDataset(
-        path='../data/tweet/test.csv', format='csv',
+        path='../data/tweet/multi/top20/test.csv', format='csv',
         fields=[('Id', ID), ('Text', TEXT), ('Label', LABEL)], skip_header=True)
 
 

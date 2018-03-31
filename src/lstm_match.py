@@ -161,12 +161,12 @@ if not test_mode:
                 batch_end = time.time()
                 MODEL = MODEL.train(True)
                 print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_macro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_macro, float(loss)))
-            torch.save(MODEL.state_dict(), 'model' + str(i+1)+'.pth')           
+            torch.save(MODEL.state_dict(), 'lstm_match_model{}.pth'.format(i+1))           
             print("Saving model..")
 
 
 
-loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, 'model{}.pth'.format(1))
+loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, 'lstm_match_model{}.pth'.format(epochs))
 
 print("=================")
 print("Evaluation results on test dataset:")

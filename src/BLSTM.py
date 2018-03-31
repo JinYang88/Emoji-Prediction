@@ -88,7 +88,7 @@ class bi_lstm(torch.nn.Module) :
         return (Variable(torch.zeros(1, self.batch_size, self.hidden_dim)),Variable(torch.zeros(1, self.batch_size, self.hidden_dim)))
 
 
-def predict_on(model, data_dl, model_state_path=None):
+def predict_on(model, data_dl, loss_func, model_state_path=None):
     if model_state_path:
         model.load_state_dict(torch.load(model_state_path))
         print('Start predicting...')
@@ -97,12 +97,11 @@ def predict_on(model, data_dl, model_state_path=None):
     res_list = []
     label_list = []
     loss = 0
-    loss_function = nn.NLLLoss()
     
 
     for texts, labels in data_dl:
         y_pred = MODEL(texts)
-        loss += loss_function(y_pred, labels)
+        loss += loss_func(y_pred, labels)
         y_pred = y_pred.data.max(1)[1].cpu().numpy()
         res_list.extend(y_pred)
         label_list.extend(labels.data.cpu().numpy())
@@ -148,14 +147,14 @@ if not test_mode:
             optimizer.step()
             batch_count += 1
             if batch_count % print_every == 0:
-                loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, valid_dl)
+                loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, valid_dl, loss_func)
                 batch_end = time.time()
                 print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_macro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_macro, float(loss)))
-        torch.save(MODEL.state_dict(), 'model' + str(i+1)+'.pth')           
+        torch.save(MODEL.state_dict(), '../model_save/BLSTM{}.pth'.format(i+1))           
 
 
 # Test
-loss, (acc, Precision, Recall, F1_macro, F1_micro)  = predict_on(MODEL, test_dl, 'model{}.pth'.format(epochs))
+loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.NLLLoss(), '../model_save/BLSTM{}.pth'.format(epochs))
 
 print("=================")
 print("Evaluation results on test dataset:")

@@ -67,7 +67,7 @@ print('Reading data done.')
 
 
 # data_dl: id, text, emoji, label
-def predict_on(model, data_dl, loss_func, model_state_path=None):
+def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     if model_state_path:
         model.load_state_dict(torch.load(model_state_path))
         print('Start predicting...')
@@ -80,7 +80,7 @@ def predict_on(model, data_dl, loss_func, model_state_path=None):
     labels_list = []
     loss = 0
     for ids, text, emoji, label in data_dl:
-        hidden_state = MODEL.init_hidden(text.size()[0])
+        hidden_state = MODEL.init_hidden(text.size()[0], device)
         similarity = MODEL(text, emoji.view(-1,1), hidden_state)
         loss += loss_func(similarity, label.view(-1,1).float())
         id_list.extend(ids.data.cpu().numpy())
@@ -135,8 +135,11 @@ class lstm_match(torch.nn.Module) :
         return similarity
         
     
-    def init_hidden(self, batch_size) :
-        return (Variable(torch.randn(1, batch_size, self.hidden_dim)),Variable(torch.randn(1, batch_size, self.hidden_dim)))  
+    def init_hidden(self, batch_size, device) :
+        if device == -1:
+            return (Variable(torch.randn(1, batch_size, self.hidden_dim)),Variable(torch.randn(1, batch_size, self.hidden_dim)))  
+        else:
+            return (Variable(torch.randn(1, batch_size, self.hidden_dim)).cuda(),Variable(torch.randn(1, batch_size, self.hidden_dim)).cuda())  
 
 
 print('Initialing model..')
@@ -159,7 +162,7 @@ if not test_mode:
         train_iter.init_epoch()
         batch_count = 0
         for text, emoji, label in train_dl:
-            hidden_state = MODEL.init_hidden(text.size()[0])
+            hidden_state = MODEL.init_hidden(text.size()[0], device)
             similarity = MODEL(text, emoji.view(-1,1), hidden_state)
             loss = loss_func(similarity, label.view(-1,1).float())
             loss.backward()
@@ -174,7 +177,7 @@ if not test_mode:
         torch.save(MODEL.state_dict(), 'model' + str(i+1)+'.pth')           
         print("Saving model..")
 
-        
+
 loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.MSELoss(), '../model_save/BLSTM-M{}.pth'.format(epochs))
 
 

@@ -121,7 +121,12 @@ def predict_on(model, data_dl, model_state_path=None):
     answer_df = result_df.loc[result_df.groupby("id")['similarity'].idxmax().values][['id','emoji']].rename(columns={"emoji":"prediction"})
     ground_truth_df = result_df[result_df['label']==1].rename(columns={"emoji":"groundtruth"})
     final_df = answer_df.merge(ground_truth_df, on="id")
-    return loss, accuracy_score(final_df['prediction'], final_df['groundtruth'])
+    acc = accuracy_score(final_df['prediction'], final_df['groundtruth'])
+    Precision = precision_score(final_df['prediction'], final_df['groundtruth'], average="macro")
+    Recall = recall_score(final_df['prediction'], final_df['groundtruth'], average="macro")
+    F1_macro = f1_score(final_df['prediction'], final_df['groundtruth'], average="macro")
+    F1_micro = f1_score(final_df['prediction'], final_df['groundtruth'], average="micro")
+    return loss, (acc, Precision, Recall, F1_macro, F1_micro)
 
 
 print('Initialing model..')
@@ -151,14 +156,24 @@ if not test_mode:
             MODEL.zero_grad()
             batch_count += 1
             if batch_count % print_every == 0:
-                loss, acc = predict_on(MODEL, valid_dl)
+                loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, valid_dl)
                 batch_end = time.time()
                 MODEL = MODEL.train(True)
-                print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. Acc is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), acc, float(loss)))
+                print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_macro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_macro, float(loss)))
             torch.save(MODEL.state_dict(), 'model' + str(i+1)+'.pth')           
             print("Saving model..")
 
-loss, acc = predict_on(MODEL, test_dl, 'model{}.pth'.format(epochs))
 
-print("Final Loss is {}.".format(loss))
-print("Acc is {}".format(acc))
+
+loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, 'model{}.pth'.format(1))
+
+print("=================")
+print("Evaluation results on test dataset:")
+print("Loss: {}.".format(float(loss)))
+print("Accuracy: {}.".format(acc))
+print("Precision: {}.".format(Precision))
+print("Recall: {}.".format(Recall))
+print("F1_micro: {}.".format(F1_micro))
+print("\n")
+print("F1_macro: {}.".format(F1_macro))
+print("=================")

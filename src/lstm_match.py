@@ -98,12 +98,14 @@ class lstm_match(torch.nn.Module) :
         return (Variable(torch.randn(batch_size, batch_size, self.hidden_dim)),Variable(torch.randn(1, batch_size, self.hidden_dim)))  
 
 
+    
 # data_dl: id, text, emoji, label
 def predict_on(model, data_dl, model_state_path=None):
     if model_state_path:
         model.load_state_dict(torch.load(model_state_path))
         print('Start predicting...')
 
+    loss_func = nn.CosineEmbeddingLoss()
     model = MODEL.eval()
     result_list = []  # id, emoji, similarity, label
     for ids, text, emoji, label in data_dl:
@@ -120,8 +122,7 @@ def predict_on(model, data_dl, model_state_path=None):
     ground_truth_df = result_df[result_df['label']==1].rename(columns={"emoji":"groundtruth"})
     final_df = answer_df.merge(ground_truth_df, on="id")
     return loss, accuracy_score(final_df['prediction'], final_df['groundtruth'])
-
-
+    
 
 print('Initialing model..')
 MODEL = lstm_match(len(TEXT.vocab),emoji_num, embedding_dim,

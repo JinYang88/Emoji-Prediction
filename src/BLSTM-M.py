@@ -19,18 +19,18 @@ from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_sc
 
 
 test_mode = 0  # 0 for train+test 1 for test
-device = -1 # 0 for gpu, -1 for cpu
+device = 0 # 0 for gpu, -1 for cpu
 
 bidirectional = False
 emoji_num = 5
 embedding_dim = 100
 hidden_dim = 100
 out_dim = 1
-p_dropout = 0.1
+p_dropout = 0.5
 
-batch_size = 16
+batch_size = 64
 epochs = 4
-print_every = 10
+print_every = 1000
 
 
 print('Reading data..')
@@ -167,14 +167,14 @@ if not test_mode:
             optimizer.step()
             MODEL.zero_grad()
             batch_count += 1
-            if batch_count % 1 == 0:
+            if batch_count % print_every == 0:
                 loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, valid_dl, loss_func)
                 batch_end = time.time()
                 MODEL = MODEL.train(True)
                 print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_macro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_macro, float(loss)))
         torch.save(MODEL.state_dict(), 'model' + str(i+1)+'.pth')           
         print("Saving model..")
-        
+
 
 loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, 'lstm_match_model{}.pth'.format(epochs))
 

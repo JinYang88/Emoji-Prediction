@@ -41,6 +41,7 @@ TEXT = data.Field(sequential=True, lower=True, eos_token='<EOS>', init_token='<B
                   pad_token='<PAD>', fix_length=None, batch_first=True, preprocessing=normalize_pipeline)
 LABEL = data.Field(sequential=False, batch_first=True, use_vocab=False)
 
+
 train = data.TabularDataset(
         path='../data/tweet/binary/top{}/train.csv'.format(emoji_num), format='csv',
         fields=[('Id', ID), ('Text', TEXT),('Emoji', EMOJI), ('Label', LABEL)], skip_header=True)

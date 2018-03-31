@@ -5,7 +5,7 @@ topn = 20
 datasets = ['train','valid','test']
 negtive = [0,1,2,3,4]
 all_recommend = range(topn)
-datasets = ['test']
+# datasets = ['test']
 
 for dataset in datasets:
     data = pd.read_csv("../data/tweet/multi/top20/{}.csv".format(dataset))

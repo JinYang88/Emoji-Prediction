@@ -162,24 +162,23 @@ if not test_mode:
         train_iter.init_epoch()
         batch_count = 0
         for text, emoji, label in train_dl:
-            hidden_state = MODEL.init_hidden(text.size()[0], device)
+            hidden_state = MODEL.init_hidden(text.size()[0])
             similarity = MODEL(text, emoji.view(-1,1), hidden_state)
             loss = loss_func(similarity, label.view(-1,1).float())
             loss.backward()
             optimizer.step()
             MODEL.zero_grad()
             batch_count += 1
-            if batch_count % 1 == 0:
-                loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, valid_dl, loss_func)
+            if batch_count % print_every == 0:
+                loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, valid_dl, loss_func, device)
                 batch_end = time.time()
                 MODEL = MODEL.train(True)
                 print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_macro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_macro, float(loss)))
         torch.save(MODEL.state_dict(), 'model' + str(i+1)+'.pth')           
         print("Saving model..")
 
-
-loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.MSELoss(), '../model_save/BLSTM-M{}.pth'.format(epochs))
-
+        
+loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.MSELoss(), device, 'model{}.pth'.format(1))
 
 print("=================")
 print("Evaluation results on test dataset:")

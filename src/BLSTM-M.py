@@ -66,27 +66,25 @@ test_dl = datahelper.BatchWrapper(test_iter, ["Id", "Text", "Emoji", "Label"])
 print('Reading data done.')
 
 
-
 # data_dl: id, text, emoji, label
-def predict_on(model, data_dl, model_state_path=None):
+def predict_on(model, data_dl, loss_func, model_state_path=None):
     if model_state_path:
         model.load_state_dict(torch.load(model_state_path))
         print('Start predicting...')
 
-    loss_func = nn.CosineEmbeddingLoss()
     model = MODEL.eval()
     result_list = []  # id, emoji, similarity, label
     id_list = []
     emoji_list = []
     similarity_list = []
     labels_list = []
+    loss = 0
     for ids, text, emoji, label in data_dl:
-        seq_embedding, emoji_embedding = MODEL(text, emoji.view(-1,1), None)
-        p_pred = F.cosine_similarity(seq_embedding.squeeze(1), emoji_embedding.squeeze(1))
-        loss = loss_func(seq_embedding.squeeze(1), emoji_embedding.squeeze(1), label.view(-1,1))
+        similarity = MODEL(text, emoji.view(-1,1), None)
+        loss += loss_func(similarity, label.view(-1,1).float())
         id_list.extend(ids.data.cpu().numpy())
         emoji_list.extend(emoji.data.cpu().numpy())
-        similarity_list.extend(p_pred.data.cpu().numpy())
+        similarity_list.extend(similarity.data.cpu().numpy())
         labels_list.extend(label.data.cpu().numpy())
         
         
@@ -115,12 +113,16 @@ class lstm_match(torch.nn.Module) :
         self.word_embedding = nn.Embedding(vocab_size, embedding_dim)
         self.emoji_embedding = nn.Embedding(emoji_num, embedding_dim)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim//2 if bidirectional else hidden_dim, batch_first=True, bidirectional=bidirectional, dropout=dropout)
-        
+        self.cosine_similarity = F.cosine_similarity
         
     def forward(self,text, emoji, hidden_init) :
         word_embedding = self.word_embedding(text)
         emoji_embedding = self.emoji_embedding(emoji)
         lstm_out,(lstm_h, lstm_c) = self.lstm(word_embedding, hidden_init)
+        
+#         print("word embedding size {}".format(word_embedding))
+#         print("emoji embedding size {}".format(emoji_embedding))
+#         print(lstm_h)
         
         if self.bidirectional:
             seq_embedding = torch.cat((lstm_h[0], lstm_h[1]), dim=1)
@@ -128,8 +130,9 @@ class lstm_match(torch.nn.Module) :
             seq_embedding = lstm_h.view(-1,1,self.hidden_dim)
             
 #         print(seq_embedding.size(), emoji_embedding.size())
-
-        return seq_embedding, emoji_embedding
+        similarity = self.cosine_similarity(seq_embedding.squeeze(1), emoji_embedding.squeeze(1))
+#         print(similarity)
+        return similarity
         
     
     def init_hidden(self, batch_size) :
@@ -146,7 +149,7 @@ if device == 0:
 
 # Train
 if not test_mode:
-    loss_func = nn.CosineEmbeddingLoss()
+    loss_func = nn.MSELoss()
     optimizer = optim.Adam(MODEL.parameters(), lr=1e-3)
     print('Start training..')
 
@@ -158,19 +161,20 @@ if not test_mode:
         train_iter.init_epoch()
         batch_count = 0
         for text, emoji, label in train_dl:
-            seq_embedding, emoji_embedding = MODEL(text, emoji.view(-1,1), None)
-            loss = loss_func(seq_embedding.squeeze(1), emoji_embedding.squeeze(1), label.view(-1,1))
+            similarity = MODEL(text, emoji.view(-1,1), None)
+            loss = loss_func(similarity, label.view(-1,1).float())
             loss.backward()
             optimizer.step()
             MODEL.zero_grad()
             batch_count += 1
-            if batch_count % print_every == 0:
-                loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, valid_dl)
+            if batch_count % 1 == 0:
+                loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, valid_dl, loss_func)
                 batch_end = time.time()
-                print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_macro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_macro, float(loss)))
-                torch.save(MODEL.state_dict(), 'lstm_match_model{}.pth'.format(i+1))           
                 MODEL = MODEL.train(True)
-
+                print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_macro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_macro, float(loss)))
+        torch.save(MODEL.state_dict(), 'model' + str(i+1)+'.pth')           
+        print("Saving model..")
+        
 
 loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, 'lstm_match_model{}.pth'.format(epochs))
 

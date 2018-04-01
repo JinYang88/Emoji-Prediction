@@ -16,32 +16,31 @@ import sys
 import model
 import datahelper
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
+import gensim
 
 torch.manual_seed(42)
 
 test_mode = 0  # 0 for train+test 1 for test
-device = 0 # 0 for gpu, -1 for cpu
+device = -1 # 0 for gpu, -1 for cpu
 
 bidirectional = True
 emoji_num = 5
-embedding_dim = 100
-hidden_dim = 100
+embedding_dim = 200
+hidden_dim = embedding_dim
 out_dim = 1
-p_dropout = 0.5
+p_dropout = 0.1
 
-batch_size = 64
+batch_size = 16
 epochs = 4
-print_every = 1000
-
+print_every = 30
 
 print('Reading data..')
 normalize_pipeline = data.Pipeline(convert_token=datahelper.normalizeString)
 ID = data.Field(sequential=False, batch_first=True, use_vocab=False)
 EMOJI = data.Field(sequential=False, batch_first=True, use_vocab=False)
 TEXT = data.Field(sequential=True, lower=True, eos_token='<EOS>', init_token='<BOS>',
-                  pad_token='<PAD>', fix_length=None, batch_first=True)
+                  pad_token='<PAD>', fix_length=None, batch_first=True,)
 LABEL = data.Field(sequential=False, batch_first=True, use_vocab=False)
-
 
 train = data.TabularDataset(
         path='../data/tweet/binary/top{}/train.csv'.format(emoji_num), format='csv',
@@ -56,7 +55,6 @@ test = data.TabularDataset(
 TEXT.build_vocab(train,valid,test, min_freq=3)
 print('Building vocabulary Finished.')
 
-
 train_iter = data.BucketIterator(dataset=train, batch_size=batch_size, sort_key=lambda x: len(x.Text), device=device, repeat=False)
 valid_iter = data.Iterator(dataset=valid, batch_size=batch_size, device=device, shuffle=False, repeat=False)
 test_iter = data.Iterator(dataset=test, batch_size=batch_size, device=device, shuffle=False, repeat=False)
@@ -65,7 +63,6 @@ train_dl = datahelper.BatchWrapper(train_iter, ["Text", "Emoji", "Label"])
 valid_dl = datahelper.BatchWrapper(valid_iter, ["Id", "Text", "Emoji", "Label"])
 test_dl = datahelper.BatchWrapper(test_iter, ["Id", "Text", "Emoji", "Label"])
 print('Reading data done.')
-
 
 # data_dl: id, text, emoji, label
 def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
@@ -106,12 +103,17 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     return loss, (acc, Precision, Recall, F1_macro, F1_micro)
 
 
-class lstm_match(torch.nn.Module) :
-    def __init__(self, vocab_size, emoji_num, embedding_dim, hidden_dim, batch_size, bidirectional, dropout):
-        super(lstm_match,self).__init__()
+
+class lstm_match_w(torch.nn.Module) :
+    def __init__(self, vocab_size, emoji_num, embedding_dim, hidden_dim, batch_size, bidirectional, dropout, wordvec_matrix):
+        super(lstm_match_w,self).__init__()
         self.bidirectional = bidirectional
         self.hidden_dim = hidden_dim
+        
         self.word_embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.word_embedding.weight.data.copy_(wordvec_matrix)
+        self.word_embedding.weight.requires_grad = False
+        
         self.emoji_embedding = nn.Embedding(emoji_num, embedding_dim)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim//2 if bidirectional else hidden_dim, batch_first=True, bidirectional=bidirectional, dropout=dropout)
         self.cosine_similarity = F.cosine_similarity
@@ -144,16 +146,25 @@ class lstm_match(torch.nn.Module) :
             return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)).cuda(),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)).cuda())  
 
 
+wordvec_matrix = datahelper.vocab_to_matrix("../data/glove_embedding/tweets_200d.txt", TEXT.vocab, device, embedding_dim)
+
+
 print('Initialing model..')
-MODEL = lstm_match(len(TEXT.vocab),emoji_num, embedding_dim,
-                   hidden_dim, batch_size, bidirectional, p_dropout)
+MODEL = lstm_match_w(len(TEXT.vocab),emoji_num, embedding_dim,
+                   hidden_dim, batch_size, bidirectional, p_dropout, wordvec_matrix)
 if device == 0:
     MODEL.cuda()
 
+    
+# for item in list(filter(lambda p: p.requires_grad, MODEL.parameters())):
+#     print(item.size())
+# sys.exit()
+    
 # Train
 if not test_mode:
     loss_func = nn.MSELoss()
-    optimizer = optim.Adam(MODEL.parameters(), lr=1e-3)
+    parameters = list(filter(lambda p: p.requires_grad, MODEL.parameters()))
+    optimizer = optim.Adam(parameters, lr=1e-3)
     print('Start training..')
 
     train_iter.create_batches()
@@ -176,11 +187,11 @@ if not test_mode:
                 batch_end = time.time()
                 MODEL = MODEL.train(True)
                 print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_macro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_macro, float(loss)))
-        torch.save(MODEL.state_dict(), '../model_save/BLSTM-M{}.pth'.format(i+1))           
+        torch.save(MODEL.state_dict(), '../model_save/BLSTM-MW{}.pth'.format(i+1))           
         print("Saving model..")
 
 
-loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.MSELoss(), device, '../model_save/BLSTM-M{}.pth'.format(epochs))
+loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.MSELoss(), device, '../model_save/BLSTM-MW{}.pth'.format(epochs))
 
 print("=================")
 print("Evaluation results on test dataset:")
@@ -191,4 +202,4 @@ print("Recall: {}.".format(Recall))
 print("F1_micro: {}.".format(F1_micro))
 print("\n")
 print("F1_macro: {}.".format(F1_macro))
-print("=================")
+print("=================")                

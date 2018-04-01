@@ -17,11 +17,13 @@ import model
 import datahelper
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
 
+torch.manual_seed(42)
 
 device = 0 # 0 for gpu, -1 for cpu
 test_mode = 0  # 0 for train+test 1 for test
 
 
+bidirectional = True
 batch_size = 64
 epochs = 1
 print_every = 1000
@@ -69,26 +71,32 @@ print('Reading data done.')
 
 
 class bi_lstm(torch.nn.Module) :
-    def __init__(self,vocab_size, embedding_dim, hidden_dim, out_dim, batch_size, p_dropout) :
+    def __init__(self,vocab_size, embedding_dim, hidden_dim, out_dim, batch_size, p_dropout, bidirectional) :
         super(bi_lstm,self).__init__()
         self.hidden_dim = hidden_dim
+        self.bidirectional = bidirectional
         self.batch_size = batch_size
         self.embeddings = nn.Embedding(vocab_size, embedding_dim)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim//2, batch_first=True, bidirectional=True, dropout=p_dropout)
         self.linearOut = nn.Linear(hidden_dim, out_dim)
-    def forward(self,inputs) :
+    def forward(self,inputs, hidden_state) :
         x = self.embeddings(inputs)
-        lstm_out,(lstm_h, lstm_c) = self.lstm(x, None)
+        lstm_out,(lstm_h, lstm_c) = self.lstm(x, hidden_state)
         x = torch.cat((lstm_h[0], lstm_h[1]), dim=1)
         x = self.linearOut(x)
         x = F.log_softmax(x, dim=1)
 
         return x
-    def init_hidden(self) :
-        return (Variable(torch.zeros(1, self.batch_size, self.hidden_dim)),Variable(torch.zeros(1, self.batch_size, self.hidden_dim)))
+
+    def init_hidden(self, batch_size, device) :
+        layer_num = 2 if self.bidirectional else 1
+        if device == -1:
+            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)))  
+        else:
+            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)).cuda(),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)).cuda())  
 
 
-def predict_on(model, data_dl, loss_func, model_state_path=None):
+def predict_on(model, data_dl, loss_func, device, model_state_path=None):
     if model_state_path:
         model.load_state_dict(torch.load(model_state_path))
         print('Start predicting...')
@@ -99,8 +107,9 @@ def predict_on(model, data_dl, loss_func, model_state_path=None):
     loss = 0
     
 
-    for texts, labels in data_dl:
-        y_pred = MODEL(texts)
+    for text, labels in data_dl:
+        hidden_state = MODEL.init_hidden(text.size()[0], device)
+        y_pred = model(text, hidden_state)
         loss += loss_func(y_pred, labels)
         y_pred = y_pred.data.max(1)[1].cpu().numpy()
         res_list.extend(y_pred)
@@ -138,23 +147,24 @@ if not test_mode:
     for i in range(epochs) :
         train_iter.init_epoch()
         batch_count = 0
-        for batch, label in train_dl:
+        for text, label in train_dl:
             MODEL = MODEL.train(True)
-            y_pred = MODEL(batch)
+            hidden_state = MODEL.init_hidden(text.size()[0], device)
+            y_pred = MODEL(text, hidden_state)
             loss = loss_function(y_pred, label)
             MODEL.zero_grad()
             loss.backward()
             optimizer.step()
             batch_count += 1
             if batch_count % print_every == 0:
-                loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, valid_dl, loss_func)
+                loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, valid_dl, loss_func, device)
                 batch_end = time.time()
                 print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_macro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_macro, float(loss)))
         torch.save(MODEL.state_dict(), '../model_save/BLSTM{}.pth'.format(i+1))           
 
 
 # Test
-loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.NLLLoss(), '../model_save/BLSTM{}.pth'.format(epochs))
+loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.NLLLoss(), device, '../model_save/BLSTM{}.pth'.format(epochs))
 
 print("=================")
 print("Evaluation results on test dataset:")

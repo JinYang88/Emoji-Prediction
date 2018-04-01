@@ -1,6 +1,7 @@
 import torch
 import re
 import torch
+import numpy as np
 
 
 class BatchWrapper:
@@ -34,3 +35,21 @@ def load_glove_as_dict(filepath):
             vec = line[1:]
             word_vec[word] = vec
     return word_vec
+
+
+
+def vocab_to_matrix(pretrain_path, vocab, device, dim=200):
+    word_vec = load_glove_as_dict(filepath=pretrain_path)
+    word_vec_list = []
+    oov = 0
+    for idx, word in enumerate(vocab.itos):
+        if word in word_vec:
+            vector = np.array(word_vec[word], dtype=float).reshape(1,dim)
+        else:
+            oov += 1
+            vector = np.random.rand(1, dim)
+        word_vec_list.append(torch.from_numpy(vector))
+    wordvec_matrix = torch.cat(word_vec_list)
+    print("Load embedding finished.")
+    print("Total words count: {}, oov count: {}.".format(wordvec_matrix.size()[0], oov))
+    return wordvec_matrix if device == -1 else wordvec_matrix.cuda()

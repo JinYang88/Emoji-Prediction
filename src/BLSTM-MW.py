@@ -20,7 +20,7 @@ from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_sc
 torch.manual_seed(42)
 
 test_mode = 0  # 0 for train+test 1 for test
-device = -1 # 0 for gpu, -1 for cpu
+device = 0 # 0 for gpu, -1 for cpu
 
 bidirectional = True
 emoji_num = 5
@@ -104,9 +104,9 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
 
 
 
-class lstm_match_w(torch.nn.Module) :
+class BLSTM_MW(torch.nn.Module) :
     def __init__(self, vocab_size, emoji_num, embedding_dim, hidden_dim, batch_size, bidirectional, dropout, wordvec_matrix):
-        super(lstm_match_w,self).__init__()
+        super(BLSTM_MW,self).__init__()
         self.bidirectional = bidirectional
         self.hidden_dim = hidden_dim
         
@@ -146,11 +146,12 @@ class lstm_match_w(torch.nn.Module) :
             return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda()),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda()))  
 
 
-wordvec_matrix = datahelper.vocab_to_matrix("../data/glove_embedding/tweets_200d.txt", TEXT.vocab, device, embedding_dim)
+# wordvec_matrix = datahelper.vocab_to_matrix("../data/glove_embedding/tweets_200d.txt", TEXT.vocab, device, embedding_dim)
+wordvec_matrix = None
 
 
 print('Initialing model..')
-MODEL = lstm_match_w(len(TEXT.vocab),emoji_num, embedding_dim,
+MODEL = BLSTM_MW(len(TEXT.vocab),emoji_num, embedding_dim,
                    hidden_dim, batch_size, bidirectional, p_dropout, wordvec_matrix)
 if device == 0:
     MODEL.cuda()

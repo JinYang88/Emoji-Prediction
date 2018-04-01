@@ -65,7 +65,6 @@ valid_dl = datahelper.BatchWrapper(valid_iter, ["Id", "Text", "Emoji", "Label"])
 test_dl = datahelper.BatchWrapper(test_iter, ["Id", "Text", "Emoji", "Label"])
 print('Reading data done.')
 
-
 # data_dl: id, text, emoji, label
 def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     if model_state_path:
@@ -124,7 +123,7 @@ class BLSTM_MA(torch.nn.Module) :
         
         lstm_out,(lstm_h, lstm_c) = self.lstm(word_embedding, hidden_init)
         
-  
+
         if self.bidirectional:
             forward_out = lstm_out[:,:,0:hidden_dim]
             backward_out = lstm_out[:,:,hidden_dim:]
@@ -141,10 +140,16 @@ class BLSTM_MA(torch.nn.Module) :
         
 
     def attention(self, lstm_out, emoji_embedding):
+#         print(lstm_out)
         similarities = self.cosine_similarity(lstm_out, emoji_embedding, dim=2)
-        simi_weights = F.softmax(similarities, dim=1).view(-1,1)
+#         print(similarities)
+        simi_weights = F.softmax(similarities, dim=1).view(batch_size, -1,1)
+#         print(simi_weights)
         seq_embedding = simi_weights * lstm_out
+#         print(seq_embedding)
         seq_embedding = torch.sum(seq_embedding, dim=1)
+#         print(seq_embedding)
+#         sys.exit()
         return seq_embedding
     
     def init_hidden(self, batch_size, device) :

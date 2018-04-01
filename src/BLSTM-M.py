@@ -39,13 +39,13 @@ normalize_pipeline = data.Pipeline(convert_token=datahelper.normalizeString)
 ID = data.Field(sequential=False, batch_first=True, use_vocab=False)
 EMOJI = data.Field(sequential=False, batch_first=True, use_vocab=False)
 TEXT = data.Field(sequential=True, lower=True, eos_token='<EOS>', init_token='<BOS>',
-                  pad_token='<PAD>', fix_length=None, batch_first=True)
+                  pad_token='<PAD>', fix_length=None, batch_first=True, preprocessing=normalize_pipeline)
 LABEL = data.Field(sequential=False, batch_first=True, use_vocab=False)
 
 
 train = data.TabularDataset(
         path='../data/tweet/binary/top{}/train.csv'.format(emoji_num), format='csv',
-        fields=[('Id', ID), ('Text', TEXT),('Emoji', EMOJI), ('Label', LABEL)], skip_header=True, preprocessing=normalize_pipeline)
+        fields=[('Id', ID), ('Text', TEXT),('Emoji', EMOJI), ('Label', LABEL)], skip_header=True)
 valid = data.TabularDataset(
         path='../data/tweet/binary/top{}/valid.csv'.format(emoji_num), format='csv',
         fields=[('Id', ID), ('Text', TEXT),('Emoji', EMOJI), ('Label', LABEL)], skip_header=True)

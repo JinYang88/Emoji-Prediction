@@ -73,7 +73,7 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
         model.load_state_dict(torch.load(model_state_path))
         print('Start predicting...')
 
-    model = model.eval()
+    model.eval()
     result_list = []  # id, emoji, similarity, label
     id_list = []
     emoji_list = []
@@ -83,7 +83,7 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     for ids, text, emoji, label in data_dl:
         hidden_state = model.init_hidden(text.size()[0], device)
         similarity = model(text, emoji.view(-1,1), hidden_state)
-        loss += loss_func(similarity, label.view(-1,1).float()).data
+        loss += loss_func(similarity, label.view(-1,1).float()).data.cpu()
         id_list.extend(ids.data.cpu().numpy())
         emoji_list.extend(emoji.data.cpu().numpy())
         similarity_list.extend(similarity.data.cpu().numpy())
@@ -146,6 +146,7 @@ class BLSTM_M(torch.nn.Module) :
 
 
 print('Initialing model..')
+torch.backends.cudnn.benchmark = True 
 MODEL = BLSTM_M(len(TEXT.vocab),emoji_num, embedding_dim,
                    hidden_dim, batch_size, bidirectional, p_dropout)
 best_state = None
@@ -169,6 +170,7 @@ if not test_mode:
         train_iter.init_epoch()
         batch_count = 0
         for text, emoji, label in train_dl:
+            MODEL.train()
             hidden_state = MODEL.init_hidden(text.size()[0], device)
             similarity = MODEL(text, emoji.view(-1,1), hidden_state)
             loss = loss_func(similarity, label.view(-1,1).float())
@@ -179,7 +181,6 @@ if not test_mode:
             if batch_count % print_every == 0:
                 loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, valid_dl, loss_func, device)
                 batch_end = time.time()
-                MODEL = MODEL.train(True)
                 if F1_macro > max_metric:
                     best_state = MODEL.state_dict()
                     max_metric = F1_macro

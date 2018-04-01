@@ -22,26 +22,24 @@ torch.manual_seed(42)
 test_mode = 0  # 0 for train+test 1 for test
 device = 0 # 0 for gpu, -1 for cpu
 
-bidirectional = True
+bidirectional = False
 emoji_num = 5
 embedding_dim = 100
 hidden_dim = 100
 out_dim = 1
-p_dropout = 0.5
+p_dropout = 0.3
 
-batch_size = 64
+batch_size = 32
 epochs = 4
-print_every = 1000
-
+print_every = 10
 
 print('Reading data..')
 normalize_pipeline = data.Pipeline(convert_token=datahelper.normalizeString)
 ID = data.Field(sequential=False, batch_first=True, use_vocab=False)
 EMOJI = data.Field(sequential=False, batch_first=True, use_vocab=False)
 TEXT = data.Field(sequential=True, lower=True, eos_token='<EOS>', init_token='<BOS>',
-                  pad_token='<PAD>', fix_length=None, batch_first=True)
+                  pad_token='<PAD>', fix_length=None, batch_first=True, preprocessing=normalize_pipeline)
 LABEL = data.Field(sequential=False, batch_first=True, use_vocab=False)
-
 
 train = data.TabularDataset(
         path='../data/tweet/binary/top{}/train.csv'.format(emoji_num), format='csv',
@@ -52,6 +50,7 @@ valid = data.TabularDataset(
 test = data.TabularDataset(
         path='../data/tweet/binary/top{}/test.csv'.format(emoji_num), format='csv',
         fields=[('Id', ID), ('Text', TEXT),('Emoji', EMOJI), ('Label', LABEL)], skip_header=True)
+
 
 TEXT.build_vocab(train,valid,test, min_freq=5)
 print('Building vocabulary Finished.')
@@ -73,7 +72,7 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
         model.load_state_dict(torch.load(model_state_path))
         print('Start predicting...')
 
-    model = model.eval()
+    model.eval()
     result_list = []  # id, emoji, similarity, label
     id_list = []
     emoji_list = []
@@ -105,52 +104,65 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     F1_micro = f1_score(final_df['prediction'], final_df['groundtruth'], average="micro")
     return loss, (acc, Precision, Recall, F1_macro, F1_micro)
 
-
-class BLSTM_MW(torch.nn.Module) :
-    def __init__(self, vocab_size, emoji_num, embedding_dim, hidden_dim, batch_size, bidirectional, dropout, pretrain_matrix):
-        super(BLSTM_MW,self).__init__()
+class BLSTM_MA(torch.nn.Module) :
+    def __init__(self, vocab_size, emoji_num, embedding_dim, hidden_dim, batch_size, bidirectional, dropout):
+        super(BLSTM_MA,self).__init__()
         self.bidirectional = bidirectional
         self.hidden_dim = hidden_dim
+        
         self.word_embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.word_embedding.weight.data.copy_(wordvec_matrix)
-        self.word_embedding.weight.requires_grad = False
+        
         self.emoji_embedding = nn.Embedding(emoji_num, embedding_dim)
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim//2 if bidirectional else hidden_dim, batch_first=True, bidirectional=bidirectional, dropout=dropout)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, batch_first=True, bidirectional=bidirectional, dropout=dropout)
         self.cosine_similarity = F.cosine_similarity
         
     def forward(self,text, emoji, hidden_init) :
         word_embedding = self.word_embedding(text)
-        emoji_embedding = self.emoji_embedding(emoji)
+        emoji_embedding = self.emoji_embedding(emoji)  # batchsize, 1, embedding_dim
+        
+        #lstm_out batch_size, sequence len, embedding_dim
+        
         lstm_out,(lstm_h, lstm_c) = self.lstm(word_embedding, hidden_init)
         
-#         print("word embedding size {}".format(word_embedding))
-#         print("emoji embedding size {}".format(emoji_embedding))
-#         print(lstm_h)
-        
+  
         if self.bidirectional:
-            seq_embedding = torch.cat((lstm_h[0], lstm_h[1]), dim=1)
+            forward_out = lstm_out[:,:,0:hidden_dim]
+            backward_out = lstm_out[:,:,hidden_dim:]
+            forward_embedding = self.attention(forward_out, emoji_embedding)
+            backward_embedding = self.attention(backward_out, emoji_embedding)
+#             seq_embedding = 
         else:
-            seq_embedding = lstm_h.view(-1,1,self.hidden_dim)
-            
+            seq_embedding = self.attention(lstm_out, emoji_embedding)
+
 #         print(seq_embedding.size(), emoji_embedding.size())
         similarity = self.cosine_similarity(seq_embedding.squeeze(1), emoji_embedding.squeeze(1))
 #         print(similarity)
         return similarity
         
-    
+
+    def attention(self, lstm_out, emoji_embedding):
+        similarities = self.cosine_similarity(lstm_out, emoji_embedding, dim=2)
+        simi_weights = F.softmax(similarities, dim=1).view(-1,1)
+        seq_embedding = simi_weights * lstm_out
+        seq_embedding = torch.sum(seq_embedding, dim=1)
+        return seq_embedding
     
     def init_hidden(self, batch_size, device) :
         layer_num = 2 if self.bidirectional else 1
         if device == -1:
-            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num),requires_grad=False))  
+            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim)))  
         else:
-            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(),requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(), requires_grad=False))  
+            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim).cuda(), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim).cuda(), requires_grad=False))  
 
 
-pretrain_matrix = datahelper.vocab_to_matrix("../data/glove_embedding/tweets_200d.txt", TEXT.vocab, device, embedding_dim)
+
 print('Initialing model..')
-MODEL = BLSTM_MW(len(TEXT.vocab),emoji_num, embedding_dim,
-                   hidden_dim, batch_size, bidirectional, p_dropout, pretrain_matrix)
+torch.backends.cudnn.benchmark = True 
+MODEL = BLSTM_MA(len(TEXT.vocab),emoji_num, embedding_dim,
+                   hidden_dim, batch_size, bidirectional, p_dropout)
+best_state = None
+max_metric = 0
+
 if device == 0:
     MODEL.cuda()
 
@@ -169,6 +181,7 @@ if not test_mode:
         train_iter.init_epoch()
         batch_count = 0
         for text, emoji, label in train_dl:
+            MODEL.train()
             hidden_state = MODEL.init_hidden(text.size()[0], device)
             similarity = MODEL(text, emoji.view(-1,1), hidden_state)
             loss = loss_func(similarity, label.view(-1,1).float())
@@ -179,13 +192,16 @@ if not test_mode:
             if batch_count % print_every == 0:
                 loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, valid_dl, loss_func, device)
                 batch_end = time.time()
-                MODEL = MODEL.train(True)
+                if F1_macro > max_metric:
+                    best_state = MODEL.state_dict()
+                    max_metric = F1_macro
+                    print("Saving model..")
+                    torch.save(best_state, '../model_save/BLSTM-MA.pth')           
                 print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_macro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_macro, float(loss)))
-        torch.save(MODEL.state_dict(), '../model_save/BLSTM-MW{}.pth'.format(i+1))           
-        print("Saving model..")
+        
 
 
-loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.MSELoss(), device, '../model_save/BLSTM-MW{}.pth'.format(epochs))
+loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.MSELoss(), device, '../model_save/BLSTM-MA.pth')
 
 print("=================")
 print("Evaluation results on test dataset:")

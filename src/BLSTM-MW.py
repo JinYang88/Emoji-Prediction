@@ -24,22 +24,24 @@ device = 0 # 0 for gpu, -1 for cpu
 
 bidirectional = True
 emoji_num = 5
-embedding_dim = 200
-hidden_dim = embedding_dim
+embedding_dim = 100
+hidden_dim = 100
 out_dim = 1
-p_dropout = 0.1
+p_dropout = 0.5
 
-batch_size = 16
+batch_size = 64
 epochs = 4
-print_every = 30
+print_every = 1000
+
 
 print('Reading data..')
 normalize_pipeline = data.Pipeline(convert_token=datahelper.normalizeString)
 ID = data.Field(sequential=False, batch_first=True, use_vocab=False)
 EMOJI = data.Field(sequential=False, batch_first=True, use_vocab=False)
 TEXT = data.Field(sequential=True, lower=True, eos_token='<EOS>', init_token='<BOS>',
-                  pad_token='<PAD>', fix_length=None, batch_first=True,)
+                  pad_token='<PAD>', fix_length=None, batch_first=True)
 LABEL = data.Field(sequential=False, batch_first=True, use_vocab=False)
+
 
 train = data.TabularDataset(
         path='../data/tweet/binary/top{}/train.csv'.format(emoji_num), format='csv',
@@ -51,8 +53,9 @@ test = data.TabularDataset(
         path='../data/tweet/binary/top{}/test.csv'.format(emoji_num), format='csv',
         fields=[('Id', ID), ('Text', TEXT),('Emoji', EMOJI), ('Label', LABEL)], skip_header=True)
 
-TEXT.build_vocab(train,valid,test, min_freq=3)
+TEXT.build_vocab(train,valid,test, min_freq=5)
 print('Building vocabulary Finished.')
+
 
 train_iter = data.BucketIterator(dataset=train, batch_size=batch_size, sort_key=lambda x: len(x.Text), device=device, repeat=False)
 valid_iter = data.Iterator(dataset=valid, batch_size=batch_size, device=device, shuffle=False, repeat=False)
@@ -62,6 +65,7 @@ train_dl = datahelper.BatchWrapper(train_iter, ["Text", "Emoji", "Label"])
 valid_dl = datahelper.BatchWrapper(valid_iter, ["Id", "Text", "Emoji", "Label"])
 test_dl = datahelper.BatchWrapper(test_iter, ["Id", "Text", "Emoji", "Label"])
 print('Reading data done.')
+
 
 # data_dl: id, text, emoji, label
 def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
@@ -77,8 +81,7 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     labels_list = []
     loss = 0
     for ids, text, emoji, label in data_dl:
-        # hidden_state = model.init_hidden(text.size()[0], device)
-        hidden_state = None
+        hidden_state = model.init_hidden(text.size()[0], device)
         similarity = model(text, emoji.view(-1,1), hidden_state)
         loss += loss_func(similarity, label.view(-1,1).float())
         id_list.extend(ids.data.cpu().numpy())
@@ -103,17 +106,14 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     return loss, (acc, Precision, Recall, F1_macro, F1_micro)
 
 
-
 class BLSTM_MW(torch.nn.Module) :
-    def __init__(self, vocab_size, emoji_num, embedding_dim, hidden_dim, batch_size, bidirectional, dropout, wordvec_matrix):
+    def __init__(self, vocab_size, emoji_num, embedding_dim, hidden_dim, batch_size, bidirectional, dropout, pretrain_matrix):
         super(BLSTM_MW,self).__init__()
         self.bidirectional = bidirectional
         self.hidden_dim = hidden_dim
-        
         self.word_embedding = nn.Embedding(vocab_size, embedding_dim)
-        # self.word_embedding.weight.data.copy_(wordvec_matrix)
-        # self.word_embedding.weight.requires_grad = False
-        
+        self.word_embedding.weight.data.copy_(wordvec_matrix)
+        self.word_embedding.weight.requires_grad = False
         self.emoji_embedding = nn.Embedding(emoji_num, embedding_dim)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim//2 if bidirectional else hidden_dim, batch_first=True, bidirectional=bidirectional, dropout=dropout)
         self.cosine_similarity = F.cosine_similarity
@@ -138,29 +138,22 @@ class BLSTM_MW(torch.nn.Module) :
         return similarity
         
     
+    
     def init_hidden(self, batch_size, device) :
         layer_num = 2 if self.bidirectional else 1
         if device == -1:
-            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)))  
+            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num),requires_grad=False))  
         else:
-            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda()),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda()))  
+            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(),requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(), requires_grad=False))  
 
 
-# wordvec_matrix = datahelper.vocab_to_matrix("../data/glove_embedding/tweets_200d.txt", TEXT.vocab, device, embedding_dim)
-wordvec_matrix = None
-
-
+pretrain_matrix = datahelper.vocab_to_matrix("../data/glove_embedding/tweets_200d.txt", TEXT.vocab, device, embedding_dim)
 print('Initialing model..')
 MODEL = BLSTM_MW(len(TEXT.vocab),emoji_num, embedding_dim,
-                   hidden_dim, batch_size, bidirectional, p_dropout, wordvec_matrix)
+                   hidden_dim, batch_size, bidirectional, p_dropout, pretrain_matrix)
 if device == 0:
     MODEL.cuda()
 
-    
-# for item in list(filter(lambda p: p.requires_grad, MODEL.parameters())):
-#     print(item.size())
-# sys.exit()
-    
 # Train
 if not test_mode:
     loss_func = nn.MSELoss()
@@ -176,8 +169,7 @@ if not test_mode:
         train_iter.init_epoch()
         batch_count = 0
         for text, emoji, label in train_dl:
-            # hidden_state = MODEL.init_hidden(text.size()[0], device)
-            hidden_state = None
+            hidden_state = MODEL.init_hidden(text.size()[0], device)
             similarity = MODEL(text, emoji.view(-1,1), hidden_state)
             loss = loss_func(similarity, label.view(-1,1).float())
             loss.backward()
@@ -204,4 +196,4 @@ print("Recall: {}.".format(Recall))
 print("F1_micro: {}.".format(F1_micro))
 print("\n")
 print("F1_macro: {}.".format(F1_macro))
-print("=================")                
+print("=================")

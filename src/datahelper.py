@@ -2,6 +2,7 @@ import torch
 import re
 import torch
 import numpy as np
+import string
 
 
 class BatchWrapper:
@@ -16,12 +17,12 @@ class BatchWrapper:
         return len(self.dl)
 
 def normalizeString(s):
-    s = s.lower().strip()
-    s = re.sub(r"<br />",r" ",s)
-    s = re.sub(r'(\W)(?=\1)', '', s)
-    s = re.sub(r"([.!?])", r" \1", s)
-    s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
-    s = re.sub(r"@.*$", r" ", s)
+    s = s.lower().strip(string.punctuation)
+    # s = re.sub(r"<br />",r" ",s)
+    # s = re.sub(r'(\W)(?=\1)', '', s)
+    # s = re.sub(r"([.!?])", r" \1", s)
+    # s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
+    # s = re.sub(r"@.*$", r" ", s)
 
     return s
 

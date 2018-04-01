@@ -53,7 +53,7 @@ test = data.TabularDataset(
         path='../data/tweet/binary/top{}/test.csv'.format(emoji_num), format='csv',
         fields=[('Id', ID), ('Text', TEXT),('Emoji', EMOJI), ('Label', LABEL)], skip_header=True)
 
-TEXT.build_vocab(train,valid,test, min_freq=3)
+TEXT.build_vocab(train,valid,test, min_freq=5)
 print('Building vocabulary Finished.')
 
 
@@ -136,12 +136,13 @@ class BLSTM_M(torch.nn.Module) :
         return similarity
         
     
+    
     def init_hidden(self, batch_size, device) :
         layer_num = 2 if self.bidirectional else 1
         if device == -1:
-            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)))  
+            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num),requires_grad=False))  
         else:
-            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda()),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda()))  
+            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(),requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(), requires_grad=False))  
 
 
 print('Initialing model..')
@@ -153,7 +154,8 @@ if device == 0:
 # Train
 if not test_mode:
     loss_func = nn.MSELoss()
-    optimizer = optim.Adam(MODEL.parameters(), lr=1e-3)
+    parameters = list(filter(lambda p: p.requires_grad, MODEL.parameters()))
+    optimizer = optim.Adam(parameters, lr=1e-3)
     print('Start training..')
 
     train_iter.create_batches()

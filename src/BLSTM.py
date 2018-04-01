@@ -54,7 +54,7 @@ test = data.TabularDataset(
         fields=[('Id', ID), ('Text', TEXT), ('Label', LABEL)], skip_header=True)
 
 
-TEXT.build_vocab(train,valid,test, min_freq=3)
+TEXT.build_vocab(train,valid,test, min_freq=5)
 print('Building vocabulary Finished.')
 
 

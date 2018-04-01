@@ -77,7 +77,8 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     labels_list = []
     loss = 0
     for ids, text, emoji, label in data_dl:
-        hidden_state = model.init_hidden(text.size()[0], device)
+        # hidden_state = model.init_hidden(text.size()[0], device)
+        hidden_state = None
         similarity = model(text, emoji.view(-1,1), hidden_state)
         loss += loss_func(similarity, label.view(-1,1).float())
         id_list.extend(ids.data.cpu().numpy())
@@ -174,7 +175,8 @@ if not test_mode:
         train_iter.init_epoch()
         batch_count = 0
         for text, emoji, label in train_dl:
-            hidden_state = MODEL.init_hidden(text.size()[0], device)
+            # hidden_state = MODEL.init_hidden(text.size()[0], device)
+            hidden_state = None
             similarity = MODEL(text, emoji.view(-1,1), hidden_state)
             loss = loss_func(similarity, label.view(-1,1).float())
             loss.backward()

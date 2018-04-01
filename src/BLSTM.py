@@ -31,7 +31,7 @@ print_every = 1000
 p_dropout = 0.5
 embedding_dim = 100
 hidden_dim = 100
-emoji_num = 20
+emoji_num = 5
 out_dim = emoji_num
 
 

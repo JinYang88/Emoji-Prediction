@@ -22,7 +22,7 @@ torch.manual_seed(42)
 test_mode = 0  # 0 for train+test 1 for test
 device = 0 # 0 for gpu, -1 for cpu
 
-bidirectional = False
+bidirectional = True
 emoji_num = 5
 embedding_dim = 100
 hidden_dim = 100
@@ -31,7 +31,7 @@ p_dropout = 0.3
 
 batch_size = 32
 epochs = 4
-print_every = 1000
+print_every = 10
 
 print('Reading data..')
 normalize_pipeline = data.Pipeline(convert_token=datahelper.normalizeString)
@@ -55,7 +55,6 @@ test = data.TabularDataset(
 TEXT.build_vocab(train,valid,test, min_freq=5)
 print('Building vocabulary Finished.')
 
-
 train_iter = data.BucketIterator(dataset=train, batch_size=batch_size, sort_key=lambda x: len(x.Text), device=device, repeat=False)
 valid_iter = data.Iterator(dataset=valid, batch_size=batch_size, device=device, shuffle=False, repeat=False)
 test_iter = data.Iterator(dataset=test, batch_size=batch_size, device=device, shuffle=False, repeat=False)
@@ -64,6 +63,8 @@ train_dl = datahelper.BatchWrapper(train_iter, ["Text", "Emoji", "Label"])
 valid_dl = datahelper.BatchWrapper(valid_iter, ["Id", "Text", "Emoji", "Label"])
 test_dl = datahelper.BatchWrapper(test_iter, ["Id", "Text", "Emoji", "Label"])
 print('Reading data done.')
+
+
 # data_dl: id, text, emoji, label
 def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     if model_state_path:
@@ -102,67 +103,63 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     F1_micro = f1_score(final_df['prediction'], final_df['groundtruth'], average="micro")
     return loss, (acc, Precision, Recall, F1_macro, F1_micro)
 
-class BLSTM_MA(torch.nn.Module) :
+class BLSTM_MAWA(torch.nn.Module) :
     def __init__(self, vocab_size, emoji_num, embedding_dim, hidden_dim, batch_size, bidirectional, dropout):
-        super(BLSTM_MA,self).__init__()
+        super(BLSTM_MAWA,self).__init__()
         self.bidirectional = bidirectional
         self.hidden_dim = hidden_dim
         
         self.word_embedding = nn.Embedding(vocab_size, embedding_dim)
         
         self.emoji_embedding = nn.Embedding(emoji_num, embedding_dim)
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, batch_first=True, bidirectional=bidirectional, dropout=dropout)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim//2 if bidirectional else hidden_dim, batch_first=True, bidirectional=bidirectional, dropout=dropout)
         self.cosine_similarity = F.cosine_similarity
         
     def forward(self,text, emoji, hidden_init) :
         word_embedding = self.word_embedding(text)
         emoji_embedding = self.emoji_embedding(emoji)  # batchsize, 1, embedding_dim
         
-        #lstm_out batch_size, sequence len, embedding_dim
-        
-        lstm_out,(lstm_h, lstm_c) = self.lstm(word_embedding, hidden_init)
-        
-
+#         lstm_out batch_size, sequence len, embedding_dim
         if self.bidirectional:
-            forward_out = lstm_out[:,:,0:hidden_dim]
-            backward_out = lstm_out[:,:,hidden_dim:]
-            forward_embedding = self.attention(forward_out, emoji_embedding)
-            backward_embedding = self.attention(backward_out, emoji_embedding)
-#             seq_embedding = 
+            weighted_word_embedding = self.attention(word_embedding, emoji_embedding)
+#             print(weighted_word_embedding)
+#             print("----")
+            lstm_out,(lstm_h, lstm_c) = self.lstm(weighted_word_embedding, hidden_init)
+#             print(lstm_h)
+#             print("----")
+            seq_embedding = torch.cat((lstm_h[0], lstm_h[1]), dim=1)
+#             print(seq_embedding)
+#             print("----")
+            
         else:
-            seq_embedding = self.attention(lstm_out, emoji_embedding)
+            weighted_word_embedding = self.attention(lstm_out, emoji_embedding)
 
-#         print(seq_embedding.size(), emoji_embedding.size())
         similarity = self.cosine_similarity(seq_embedding.squeeze(1), emoji_embedding.squeeze(1))
-#         print(similarity)
         return similarity
         
 
-    def attention(self, lstm_out, emoji_embedding):
+    def attention(self, word_embedding, emoji_embedding):
 #         print(lstm_out)
-        similarities = self.cosine_similarity(lstm_out, emoji_embedding, dim=2)
+        similarities = self.cosine_similarity(word_embedding, emoji_embedding, dim=2)
 #         print(similarities)
-        simi_weights = F.softmax(similarities, dim=1).view(-1, lstm_out.size()[1],1)
+        simi_weights = F.softmax(similarities, dim=1).view(-1, word_embedding.size()[1],1)
 #         print(simi_weights)
-        seq_embedding = simi_weights * lstm_out
-#         print(seq_embedding)
-        seq_embedding = torch.sum(seq_embedding, dim=1)
+        weighted_word_embedding = simi_weights * word_embedding
 #         print(seq_embedding)
 #         sys.exit()
-        return seq_embedding
+        return weighted_word_embedding
     
     def init_hidden(self, batch_size, device) :
         layer_num = 2 if self.bidirectional else 1
         if device == -1:
-            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim)))  
+            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num),requires_grad=False))  
         else:
-            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim).cuda(), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim).cuda(), requires_grad=False))  
-
+            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(),requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(), requires_grad=False))  
 
 
 print('Initialing model..')
 torch.backends.cudnn.benchmark = True 
-MODEL = BLSTM_MA(len(TEXT.vocab),emoji_num, embedding_dim,
+MODEL = BLSTM_MAWA(len(TEXT.vocab),emoji_num, embedding_dim,
                    hidden_dim, batch_size, bidirectional, p_dropout)
 best_state = None
 max_metric = 0
@@ -200,12 +197,11 @@ if not test_mode:
                     best_state = MODEL.state_dict()
                     max_metric = F1_macro
                     print("Saving model..")
-                    torch.save(best_state, '../model_save/BLSTM-MA.pth')           
+                    torch.save(best_state, '../model_save/BLSTM-MAWA.pth')           
                 print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_macro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_macro, float(loss)))
         
 
-
-loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.MSELoss(), device, '../model_save/BLSTM-MA.pth')
+loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.MSELoss(), device, '../model_save/BLSTM-MAWA.pth')
 
 print("=================")
 print("Evaluation results on test dataset:")
@@ -216,4 +212,4 @@ print("Recall: {}.".format(Recall))
 print("F1_micro: {}.".format(F1_micro))
 print("\n")
 print("F1_macro: {}.".format(F1_macro))
-print("=================")
+print("=================")            

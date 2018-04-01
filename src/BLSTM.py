@@ -70,14 +70,14 @@ print('Reading data done.')
 
 
 
-class bi_lstm(torch.nn.Module) :
+class BLSTM(torch.nn.Module) :
     def __init__(self,vocab_size, embedding_dim, hidden_dim, out_dim, batch_size, p_dropout, bidirectional) :
-        super(bi_lstm,self).__init__()
+        super(BLSTM,self).__init__()
         self.hidden_dim = hidden_dim
         self.bidirectional = bidirectional
         self.batch_size = batch_size
         self.embeddings = nn.Embedding(vocab_size, embedding_dim)
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim//2, batch_first=True, bidirectional=True, dropout=p_dropout)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim//2, batch_first=True, bidirectional=bidirectional, dropout=p_dropout)
         self.linearOut = nn.Linear(hidden_dim, out_dim)
     def forward(self,inputs, hidden_state) :
         x = self.embeddings(inputs)
@@ -129,7 +129,7 @@ def predict_on(model, data_dl, loss_func, device, model_state_path=None):
 
 
 print('Initialing model..')
-MODEL = bi_lstm(len(TEXT.vocab), embedding_dim, hidden_dim, out_dim, batch_size, p_dropout)
+MODEL = BLSTM(len(TEXT.vocab), embedding_dim, hidden_dim, out_dim, batch_size, p_dropout, bidirectional)
 if device == 0:
     MODEL.cuda()
 

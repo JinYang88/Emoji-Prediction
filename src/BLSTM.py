@@ -93,7 +93,7 @@ class BLSTM(torch.nn.Module) :
         if device == -1:
             return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)))  
         else:
-            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)).cuda(),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)).cuda())  
+            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda()),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda()))  
 
 
 def predict_on(model, data_dl, loss_func, device, model_state_path=None):

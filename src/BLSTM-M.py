@@ -141,7 +141,7 @@ class BLSTM_M(torch.nn.Module) :
         if device == -1:
             return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)))  
         else:
-            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)).cuda(),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)).cuda())  
+            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda()),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda()))  
 
 
 print('Initialing model..')

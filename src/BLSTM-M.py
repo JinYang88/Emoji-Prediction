@@ -27,9 +27,9 @@ emoji_num = 5
 embedding_dim = 100
 hidden_dim = 100
 out_dim = 1
-p_dropout = 0.5
+p_dropout = 0.3
 
-batch_size = 64
+batch_size = 32
 epochs = 4
 print_every = 1000
 
@@ -45,7 +45,7 @@ LABEL = data.Field(sequential=False, batch_first=True, use_vocab=False)
 
 train = data.TabularDataset(
         path='../data/tweet/binary/top{}/train.csv'.format(emoji_num), format='csv',
-        fields=[('Id', ID), ('Text', TEXT),('Emoji', EMOJI), ('Label', LABEL)], skip_header=True)
+        fields=[('Id', ID), ('Text', TEXT),('Emoji', EMOJI), ('Label', LABEL)], skip_header=True, preprocessing=normalize_pipeline)
 valid = data.TabularDataset(
         path='../data/tweet/binary/top{}/valid.csv'.format(emoji_num), format='csv',
         fields=[('Id', ID), ('Text', TEXT),('Emoji', EMOJI), ('Label', LABEL)], skip_header=True)
@@ -148,6 +148,9 @@ class BLSTM_M(torch.nn.Module) :
 print('Initialing model..')
 MODEL = BLSTM_M(len(TEXT.vocab),emoji_num, embedding_dim,
                    hidden_dim, batch_size, bidirectional, p_dropout)
+best_state = None
+max_metric = 0
+
 if device == 0:
     MODEL.cuda()
 
@@ -177,12 +180,16 @@ if not test_mode:
                 loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, valid_dl, loss_func, device)
                 batch_end = time.time()
                 MODEL = MODEL.train(True)
+                if F1_macro > max_metric:
+                    best_state = MODEL.state_dict()
+                    max_metric = F1_macro
+                    print("Saving model..")
+                    torch.save(best_state, '../model_save/BLSTM-M.pth')           
                 print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_macro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_macro, float(loss)))
-        torch.save(MODEL.state_dict(), '../model_save/BLSTM-M{}.pth'.format(i+1))           
-        print("Saving model..")
+        
 
 
-loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.MSELoss(), device, '../model_save/BLSTM-M{}.pth'.format(epochs))
+loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.MSELoss(), device, '../model_save/BLSTM-M.pth')
 
 print("=================")
 print("Evaluation results on test dataset:")

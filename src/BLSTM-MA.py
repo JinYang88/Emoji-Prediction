@@ -64,7 +64,6 @@ train_dl = datahelper.BatchWrapper(train_iter, ["Text", "Emoji", "Label"])
 valid_dl = datahelper.BatchWrapper(valid_iter, ["Id", "Text", "Emoji", "Label"])
 test_dl = datahelper.BatchWrapper(test_iter, ["Id", "Text", "Emoji", "Label"])
 print('Reading data done.')
-
 # data_dl: id, text, emoji, label
 def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     if model_state_path:
@@ -143,7 +142,7 @@ class BLSTM_MA(torch.nn.Module) :
 #         print(lstm_out)
         similarities = self.cosine_similarity(lstm_out, emoji_embedding, dim=2)
 #         print(similarities)
-        simi_weights = F.softmax(similarities, dim=1).view(batch_size, -1,1)
+        simi_weights = F.softmax(similarities, dim=1).view(-1, lstm_out.size()[1],1)
 #         print(simi_weights)
         seq_embedding = simi_weights * lstm_out
 #         print(seq_embedding)

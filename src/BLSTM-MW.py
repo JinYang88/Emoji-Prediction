@@ -16,7 +16,6 @@ import sys
 import model
 import datahelper
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
-import gensim
 
 torch.manual_seed(42)
 
@@ -111,8 +110,8 @@ class lstm_match_w(torch.nn.Module) :
         self.hidden_dim = hidden_dim
         
         self.word_embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.word_embedding.weight.data.copy_(wordvec_matrix)
-        self.word_embedding.weight.requires_grad = False
+        # self.word_embedding.weight.data.copy_(wordvec_matrix)
+        # self.word_embedding.weight.requires_grad = False
         
         self.emoji_embedding = nn.Embedding(emoji_num, embedding_dim)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim//2 if bidirectional else hidden_dim, batch_first=True, bidirectional=bidirectional, dropout=dropout)

@@ -134,6 +134,9 @@ if device == 0:
     MODEL.cuda()
 
 
+best_state = None
+max_metric = 0
+
 # Train
 if not test_mode:
     loss_function = nn.NLLLoss()
@@ -159,8 +162,12 @@ if not test_mode:
             if batch_count % print_every == 0:
                 loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, valid_dl, loss_function, device)
                 batch_end = time.time()
-                print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_macro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_macro, float(loss)))
-        torch.save(MODEL.state_dict(), '../model_save/BLSTM{}.pth'.format(i+1))           
+                if F1_micro > max_metric:
+                    best_state = MODEL.state_dict()
+                    max_metric = F1_micro
+                    print("Saving model..")
+                    torch.save(best_state, '../model_save/BLSTM.pth')   
+                print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_micro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_micro, float(loss)))
 
 
 # Test

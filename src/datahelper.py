@@ -17,7 +17,8 @@ class BatchWrapper:
         return len(self.dl)
 
 def normalizeString(s):
-    s = s.lower().strip(string.punctuation + '\n')
+    strips = re.sub('[<>]', "",string.punctuation)
+    s = s.lower().strip(strips + '\n')
     # s = re.sub(r"<br />",r" ",s)
     # s = re.sub(r'(\W)(?=\1)', '', s)
     # s = re.sub(r"([.!?])", r" \1", s)

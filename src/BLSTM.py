@@ -29,8 +29,8 @@ epochs = 1
 print_every = 1000
 
 p_dropout = 0.5
-embedding_dim = 100
-hidden_dim = 100
+embedding_dim = 300
+hidden_dim = 300
 emoji_num = 5
 out_dim = emoji_num
 
@@ -116,8 +116,8 @@ def predict_on(model, data_dl, loss_func, device, model_state_path=None):
         label_list.extend(labels.data.cpu().numpy())
 
     acc = accuracy_score(res_list, label_list)
-    Precision = precision_score(res_list, label_list, average="macro")
-    Recall = recall_score(res_list, label_list, average="macro")
+    Precision = precision_score(res_list, label_list, average="micro")
+    Recall = recall_score(res_list, label_list, average="micro")
     F1_macro = f1_score(res_list, label_list, average="macro")
     F1_micro = f1_score(res_list, label_list, average="micro")
 
@@ -173,7 +173,6 @@ print("Accuracy: {}.".format(acc))
 print("Precision: {}.".format(Precision))
 print("Recall: {}.".format(Recall))
 print("F1_micro: {}.".format(F1_micro))
-print("\n")
 print("F1_macro: {}.".format(F1_macro))
 print("=================")
 

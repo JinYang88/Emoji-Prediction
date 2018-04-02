@@ -24,14 +24,14 @@ device = 0 # 0 for gpu, -1 for cpu
 
 bidirectional = True
 emoji_num = 5
-embedding_dim = 100
-hidden_dim = 100
+embedding_dim = 300
+hidden_dim = 300
 out_dim = 1
 p_dropout = 0.3
 
 batch_size = 32
 epochs = 4
-print_every = 10
+print_every = 1000
 
 print('Reading data..')
 normalize_pipeline = data.Pipeline(convert_token=datahelper.normalizeString)
@@ -97,8 +97,8 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     ground_truth_df = result_df[result_df['label']==1].rename(columns={"emoji":"groundtruth"})
     final_df = answer_df.merge(ground_truth_df, on="id")
     acc = accuracy_score(final_df['prediction'], final_df['groundtruth'])
-    Precision = precision_score(final_df['prediction'], final_df['groundtruth'], average="macro")
-    Recall = recall_score(final_df['prediction'], final_df['groundtruth'], average="macro")
+    Precision = precision_score(final_df['prediction'], final_df['groundtruth'], average="micro")
+    Recall = recall_score(final_df['prediction'], final_df['groundtruth'], average="micro")
     F1_macro = f1_score(final_df['prediction'], final_df['groundtruth'], average="macro")
     F1_micro = f1_score(final_df['prediction'], final_df['groundtruth'], average="micro")
     return loss, (acc, Precision, Recall, F1_macro, F1_micro)
@@ -210,6 +210,5 @@ print("Accuracy: {}.".format(acc))
 print("Precision: {}.".format(Precision))
 print("Recall: {}.".format(Recall))
 print("F1_micro: {}.".format(F1_micro))
-print("\n")
 print("F1_macro: {}.".format(F1_macro))
 print("=================")            

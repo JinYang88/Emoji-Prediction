@@ -24,11 +24,11 @@ test_mode = 0  # 0 for train+test 1 for test
 
 
 bidirectional = True
-batch_size = 64
+batch_size = 32
 epochs = 1
 print_every = 1000
 
-p_dropout = 0.5
+p_dropout = 0.3
 embedding_dim = 300
 hidden_dim = 300
 emoji_num = 5

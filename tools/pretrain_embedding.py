@@ -1,6 +1,7 @@
-import datahelper
 import gensim
 import sys
+sys.path.append("../src/")
+import datahelper
 import pandas as pd
 import re
 

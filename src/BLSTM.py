@@ -171,7 +171,7 @@ if not test_mode:
 
 
 # Test
-loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.NLLLoss(), device, '../model_save/BLSTM{}.pth'.format(epochs))
+loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.NLLLoss(), device, '../model_save/BLSTM.pth'.format(epochs))
 
 print("=================")
 print("Evaluation results on test dataset:")

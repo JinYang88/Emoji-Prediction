@@ -164,7 +164,7 @@ class PBLSTM_MAWA(torch.nn.Module) :
 
 print('Initialing model..')
 torch.backends.cudnn.benchmark = True 
-MODEL = PBLSTM_MA(len(TEXT.vocab),emoji_num, embedding_dim,
+MODEL = PBLSTM_MAWA(len(TEXT.vocab),emoji_num, embedding_dim,
                    hidden_dim, batch_size, bidirectional, word_matrix, emoji_matrix)
 best_state = None
 max_metric = 0

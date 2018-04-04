@@ -151,13 +151,14 @@ class PBLSTM_MAWA(torch.nn.Module) :
 
         return similarity
         
-    
+        
     def init_hidden(self, batch_size, device) :
         layer_num = 2 if self.bidirectional else 1
         if device == -1:
-            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim)))  
+            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num),requires_grad=False))  
         else:
-            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim).cuda(), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim).cuda(), requires_grad=False))  
+            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(),requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(), requires_grad=False))  
+
 
 
 

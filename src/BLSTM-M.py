@@ -83,7 +83,7 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     for ids, text, emoji, label in data_dl:
         hidden_state = MODEL.init_hidden(text.size()[0], device)
         similarity = MODEL(text, emoji.view(-1,1), hidden_state)
-        loss += loss_func(similarity, label.view(-1,1).float())
+        loss += loss_func(similarity, label.view(-1,1).float()).data.cpu()
         id_list.extend(ids.data.cpu().numpy())
         emoji_list.extend(emoji.data.cpu().numpy())
         similarity_list.extend(similarity.data.cpu().numpy())

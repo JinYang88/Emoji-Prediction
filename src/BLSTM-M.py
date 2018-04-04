@@ -107,9 +107,9 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
 
 
 
-class lstm_match(torch.nn.Module) :
+class BLSTM_M(torch.nn.Module) :
     def __init__(self, vocab_size, emoji_num, embedding_dim, hidden_dim, batch_size, bidirectional, dropout):
-        super(lstm_match,self).__init__()
+        super(BLSTM_M,self).__init__()
         self.bidirectional = bidirectional
         self.hidden_dim = hidden_dim
         self.word_embedding = nn.Embedding(vocab_size, embedding_dim)

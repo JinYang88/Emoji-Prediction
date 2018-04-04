@@ -39,11 +39,11 @@ def load_glove_as_dict(filepath):
 
 
 
-def vocab_to_matrix(pretrain_path, vocab, device, dim=200):
+def wordlist_to_matrix(pretrain_path, wordlist, device, dim=200):
     word_vec = load_glove_as_dict(filepath=pretrain_path)
     word_vec_list = []
     oov = 0
-    for idx, word in enumerate(vocab.itos):
+    for idx, word in enumerate(wordlist):
         if word in word_vec:
             vector = np.array(word_vec[word], dtype=float).reshape(1,dim)
         else:

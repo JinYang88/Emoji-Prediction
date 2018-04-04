@@ -36,10 +36,10 @@ list_with_emoji = []
 linecount = 0
 with open(raw_data_path, 'r') as fr:
     for line in fr:
-        linecount = +=1
+        linecount += 1
         js_dict = json.loads(line)
         
-        Label = None
+        Label
         data_line = None
         UserName = js_dict['user']['screen_name']
         Text = js_dict['text'].strip()
@@ -50,7 +50,7 @@ with open(raw_data_path, 'r') as fr:
             emoji = emoji_set.pop()
             Text = clean_text(Text, "<{}>".format(mapping[emoji]))
             list_with_emoji.append([Id, Text])
-        if linecount % 10000:
+        if linecount % 10000 == 0:
             print("Processed {} lines.".format(linecount))
 
 df_with_emoji = pd.DataFrame(list_with_emoji)

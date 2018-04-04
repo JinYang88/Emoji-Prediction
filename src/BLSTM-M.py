@@ -73,7 +73,7 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
         model.load_state_dict(torch.load(model_state_path))
         print('Start predicting...')
 
-    model.eval()
+    model = MODEL.eval()
     result_list = []  # id, emoji, similarity, label
     id_list = []
     emoji_list = []
@@ -81,9 +81,9 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     labels_list = []
     loss = 0
     for ids, text, emoji, label in data_dl:
-        hidden_state = model.init_hidden(text.size()[0], device)
-        similarity = model(text, emoji.view(-1,1), hidden_state)
-        loss += loss_func(similarity, label.view(-1,1).float()).data.cpu()
+        hidden_state = MODEL.init_hidden(text.size()[0], device)
+        similarity = MODEL(text, emoji.view(-1,1), hidden_state)
+        loss += loss_func(similarity, label.view(-1,1).float())
         id_list.extend(ids.data.cpu().numpy())
         emoji_list.extend(emoji.data.cpu().numpy())
         similarity_list.extend(similarity.data.cpu().numpy())
@@ -99,22 +99,24 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     ground_truth_df = result_df[result_df['label']==1].rename(columns={"emoji":"groundtruth"})
     final_df = answer_df.merge(ground_truth_df, on="id")
     acc = accuracy_score(final_df['prediction'], final_df['groundtruth'])
-    Precision = precision_score(final_df['prediction'], final_df['groundtruth'], average="micro")
-    Recall = recall_score(final_df['prediction'], final_df['groundtruth'], average="micro")
+    Precision = precision_score(final_df['prediction'], final_df['groundtruth'], average="macro")
+    Recall = recall_score(final_df['prediction'], final_df['groundtruth'], average="macro")
     F1_macro = f1_score(final_df['prediction'], final_df['groundtruth'], average="macro")
     F1_micro = f1_score(final_df['prediction'], final_df['groundtruth'], average="micro")
     return loss, (acc, Precision, Recall, F1_macro, F1_micro)
 
 
-class BLSTM_M(torch.nn.Module) :
+
+class lstm_match(torch.nn.Module) :
     def __init__(self, vocab_size, emoji_num, embedding_dim, hidden_dim, batch_size, bidirectional, dropout):
-        super(BLSTM_M,self).__init__()
+        super(lstm_match,self).__init__()
         self.bidirectional = bidirectional
         self.hidden_dim = hidden_dim
         self.word_embedding = nn.Embedding(vocab_size, embedding_dim)
         self.emoji_embedding = nn.Embedding(emoji_num, embedding_dim)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim//2 if bidirectional else hidden_dim, batch_first=True, bidirectional=bidirectional, dropout=dropout)
         self.cosine_similarity = F.cosine_similarity
+        self.linearOut = nn.Linear(hidden_dim, hidden_dim)
         
     def forward(self,text, emoji, hidden_init) :
         word_embedding = self.word_embedding(text)
@@ -131,18 +133,17 @@ class BLSTM_M(torch.nn.Module) :
             seq_embedding = lstm_h.view(-1,1,self.hidden_dim)
             
 #         print(seq_embedding.size(), emoji_embedding.size())
-        similarity = self.cosine_similarity(seq_embedding.squeeze(1), emoji_embedding.squeeze(1))
-#         print(similarity)
+        linearo = self.linearOut(seq_embedding)
+        similarity = self.cosine_similarity(linearo.squeeze(1), emoji_embedding.squeeze(1))
         return similarity
         
-    
     
     def init_hidden(self, batch_size, device) :
         layer_num = 2 if self.bidirectional else 1
         if device == -1:
-            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num),requires_grad=False))  
+            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim)))  
         else:
-            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(),requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(), requires_grad=False))  
+            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim).cuda(), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim).cuda(), requires_grad=False))  
 
 
 print('Initialing model..')

@@ -30,4 +30,4 @@ print(model)
 
 with open("../data/embedding/top5embedding.txt", 'w') as fw:
     for k in model.wv.vocab:
-        fw.write("{} {}\n".format(k, model[k]))
+        fw.write("{} {}\n".format(k, ' '.join(model[k].astype(str))))

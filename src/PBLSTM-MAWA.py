@@ -27,7 +27,7 @@ hidden_dim = embedding_dim
 out_dim = 1
 p_dropout = 0.1
 
-batch_size = 32
+batch_size = 64
 epochs = 4
 print_every = 1
 
@@ -120,7 +120,7 @@ class PBLSTM_MAWA(torch.nn.Module) :
         self.emoji_embedding.weight.data.copy_(emoji_mat)
         self.emoji_embedding.weight.requires_grad = False
         
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, batch_first=True, bidirectional=bidirectional)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim //2 if bidirectional else hidden_dim, batch_first=True, bidirectional=bidirectional)
         self.cosine_similarity = F.cosine_similarity
         
         self.linearOut = nn.Linear(hidden_dim, hidden_dim)
@@ -151,7 +151,7 @@ class PBLSTM_MAWA(torch.nn.Module) :
 
         return similarity
         
-        
+
     def init_hidden(self, batch_size, device) :
         layer_num = 2 if self.bidirectional else 1
         if device == -1:

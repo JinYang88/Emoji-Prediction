@@ -77,12 +77,17 @@ class BLSTM(torch.nn.Module) :
         self.bidirectional = bidirectional
         self.batch_size = batch_size
         self.embeddings = nn.Embedding(vocab_size, embedding_dim)
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim//2, batch_first=True, bidirectional=bidirectional, dropout=p_dropout)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim//2 if bidirectional else hidden_dim, batch_first=True, bidirectional=bidirectional, dropout=p_dropout)
         self.linearOut = nn.Linear(hidden_dim, out_dim)
     def forward(self,inputs, hidden_state) :
         x = self.embeddings(inputs)
         lstm_out,(lstm_h, lstm_c) = self.lstm(x, hidden_state)
-        x = torch.cat((lstm_h[0], lstm_h[1]), dim=1)
+
+        if self.bidirectional:
+            x = torch.cat((lstm_h[0], lstm_h[1]), dim=1)
+        else:
+            x = lstm_h.squeeze(0)
+
         x = self.linearOut(x)
         x = F.log_softmax(x, dim=1)
 

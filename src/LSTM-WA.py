@@ -25,7 +25,7 @@ device = 0 # 0 for gpu, -1 for cpu
 bidirectional = True
 emoji_num = 5
 embedding_dim = 300
-hidden_dim = 300
+hidden_dim = 800
 
 batch_size = 32
 epochs = 4
@@ -90,7 +90,7 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     F1_micro = f1_score(res_list, label_list, average="micro")
 
     if model_state_path:
-        with open('LSTM_WA-Result.txt', 'w') as fw:
+        with open('LSTM_A-Result.txt', 'w') as fw:
             for line in res_list:
                 fw.write(str(line) + '\n')
     return loss, (acc, Precision, Recall, F1_macro, F1_micro)
@@ -107,13 +107,17 @@ class LSTM_WA(torch.nn.Module) :
         
         self.word_embedding = nn.Embedding(vocab_size, embedding_dim)
         self.emoji_matrix = torch.nn.Parameter(torch.rand(emoji_num, embedding_dim))
-        
         self.cosine_similarity = F.cosine_similarity
         self.lstm = nn.LSTM(embedding_dim * emoji_num, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
-        self.linearOut = nn.Linear(hidden_dim, emoji_num)
+        self.linearOut1 = nn.Linear(hidden_dim, hidden_dim//2)
+        self.linearOut2 = nn.Linear(hidden_dim//2, emoji_num)
         
     def forward(self, text, hidden_init) :
+        
+
         word_embedding = self.word_embedding(text)
+        
+        
         seq_embedding = self.attention(word_embedding, self.emoji_matrix)
         lstm_out,(lstm_h, lstm_c) = self.lstm(seq_embedding, hidden_init)
  
@@ -123,8 +127,9 @@ class LSTM_WA(torch.nn.Module) :
             linear_in = torch.cat((lstm_h[0], lstm_h[1]), dim=1)
         
             
-        linearo = self.linearOut(linear_in)
-        return F.log_softmax(linearo, dim=1)
+        linearo1 = self.linearOut1(linear_in)
+        linearo2 = self.linearOut2(linearo1)
+        return F.log_softmax(linearo2, dim=1)
         
         
     def attention(self, lstm_out, emoji_matrix):
@@ -143,6 +148,7 @@ class LSTM_WA(torch.nn.Module) :
             return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)))  
         else:
             return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(), requires_grad=False))  
+
 
 
 print('Initialing model..')

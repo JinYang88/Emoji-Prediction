@@ -75,13 +75,14 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     label_list = []
     loss = 0
 
-    for texts, labels in data_dl:
+    for text, label in data_dl:
         hidden_state = MODEL.init_hidden(text.size()[0], device)
         y_pred = MODEL(text, hidden_state)
-        loss += loss_func(y_pred, labels).data.cpu()
+        
+        loss += loss_func(y_pred, label).data.cpu()
         y_pred = y_pred.data.max(1)[1].cpu().numpy()
         res_list.extend(y_pred)
-        label_list.extend(labels.data.cpu().numpy())
+        label_list.extend(label.data.cpu().numpy())
 
     acc = accuracy_score(res_list, label_list)
     Precision = precision_score(res_list, label_list, average="macro")
@@ -157,7 +158,7 @@ if device == 0:
     
 # print(MODEL.state_dict())
 
-sys.exit()
+# sys.exit()
 best_state = None
 max_metric = 0
 

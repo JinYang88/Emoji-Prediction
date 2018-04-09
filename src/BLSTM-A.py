@@ -130,7 +130,7 @@ class LSTM_A(torch.nn.Module) :
             similarities = self.cosine_similarity(lstm_out, emoji_matrix[emoji_idx].unsqueeze(0), dim=-1)
             
 #             print(similarities)
-            simi_weights = F.softmax(similarities, dim=1).view(self.batch_size, -1, 1)
+            simi_weights = F.softmax(similarities, dim=1).view(lstm_out.size()[0], -1, 1)
 #             print(simi_weights)
             seq_embedding = simi_weights * lstm_out
 #             print(seq_embedding)

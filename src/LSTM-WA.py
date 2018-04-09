@@ -63,6 +63,7 @@ valid_dl = datahelper.BatchWrapper(valid_iter, ["Text", "Label"])
 test_dl = datahelper.BatchWrapper(test_iter, ["Text", "Label"])
 print('Reading data done.')
 
+
 def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     if model_state_path:
         model.load_state_dict(torch.load(model_state_path))
@@ -104,7 +105,7 @@ class LSTM_WA(torch.nn.Module) :
         self.batch_size = batch_size
         
         self.word_embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.emoji_matrix = torch.nn.Parameter(torch.rand(emoji_num, embedding_dim).cuda() if device != -1 else torch.rand(emoji_num, embedding_dim))
+        self.emoji_matrix = torch.nn.Parameter(torch.rand(emoji_num, embedding_dim))
 
         
         self.cosine_similarity = F.cosine_similarity

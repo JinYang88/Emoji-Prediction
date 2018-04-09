@@ -69,7 +69,7 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
         model.load_state_dict(torch.load(model_state_path))
         print('Start predicting...')
 
-    model = model.eval()
+    model.eval()
     res_list = []
     label_list = []
     loss = 0
@@ -111,6 +111,7 @@ class LSTM_WA(torch.nn.Module) :
         self.lstm = nn.LSTM(embedding_dim * emoji_num, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
         self.linearOut1 = nn.Linear(hidden_dim, hidden_dim//2)
         self.linearOut2 = nn.Linear(hidden_dim//2, emoji_num)
+        self.drop_out = nn.Dropout(p=0.5)
         
     def forward(self, text, hidden_init) :
         
@@ -128,6 +129,7 @@ class LSTM_WA(torch.nn.Module) :
         
             
         linearo1 = self.linearOut1(linear_in)
+        linearo1 = self.drop_out(linearo1)
         linearo2 = self.linearOut2(linearo1)
         return F.log_softmax(linearo2, dim=1)
         
@@ -176,7 +178,7 @@ if not test_mode:
         train_iter.init_epoch()
         batch_count = 0
         for text, label in train_dl:
-            MODEL = MODEL.train(True)
+            MODEL.train(True)
             hidden_state = MODEL.init_hidden(text.size()[0], device)
             y_pred = MODEL(text, hidden_state)
             loss = loss_func(y_pred, label)

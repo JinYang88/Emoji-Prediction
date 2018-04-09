@@ -20,16 +20,16 @@ from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_sc
 
 
 test_mode = 0  # 0 for train+test 1 for test
-device = -1 # 0 for gpu, -1 for cpu
+device = 0 # 0 for gpu, -1 for cpu
 
 bidirectional = False
 emoji_num = 5
-embedding_dim = 300
-hidden_dim = 300
+embedding_dim = 200
+hidden_dim = 200
 
-batch_size = 3
+batch_size = 32
 epochs = 4
-print_every = 1
+print_every = 500
 
 
 print('Reading data..')
@@ -62,7 +62,6 @@ train_dl = datahelper.BatchWrapper(train_iter, ["Text", "Label"])
 valid_dl = datahelper.BatchWrapper(valid_iter, ["Text", "Label"])
 test_dl = datahelper.BatchWrapper(test_iter, ["Text", "Label"])
 print('Reading data done.')
-
 
 def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     if model_state_path:
@@ -138,7 +137,7 @@ class LSTM_WA(torch.nn.Module) :
             similarities = self.cosine_similarity(lstm_out, emoji_matrix[emoji_idx].unsqueeze(0), dim=-1)
             
 #             print(similarities)
-            simi_weights = F.softmax(similarities, dim=1).view(self.batch_size, -1, 1)
+            simi_weights = F.softmax(similarities, dim=1).view(lstm_out.size()[0], -1, 1)
 #             print(simi_weights)
             seq_embedding = simi_weights * lstm_out
 #             print(seq_embedding)
@@ -204,7 +203,7 @@ if not test_mode:
                 print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_micro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_micro, float(loss)))
         
 
-        
+
 loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.NLLLoss(), device, '../model_save/LSTM_WA.pth')
 
 print("=================")

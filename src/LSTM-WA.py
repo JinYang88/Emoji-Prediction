@@ -24,8 +24,8 @@ device = 0 # 0 for gpu, -1 for cpu
 
 bidirectional = False
 emoji_num = 5
-embedding_dim = 200
-hidden_dim = 200
+embedding_dim = 300
+hidden_dim = 300
 
 batch_size = 32
 epochs = 4

@@ -18,6 +18,7 @@ import datahelper
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
 
 
+torch.manual_seed(42)
 
 test_mode = 0  # 0 for train+test 1 for test
 device = 0 # 0 for gpu, -1 for cpu

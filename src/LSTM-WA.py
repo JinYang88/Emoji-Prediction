@@ -17,7 +17,7 @@ import model
 import datahelper
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
 
-
+torch.manual_seed(42)
 
 test_mode = 0  # 0 for train+test 1 for test
 device = 0 # 0 for gpu, -1 for cpu
@@ -90,7 +90,7 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     F1_micro = f1_score(res_list, label_list, average="micro")
 
     if model_state_path:
-        with open('LSTM_A-Result.txt', 'w') as fw:
+        with open('LSTM_WA-Result.txt', 'w') as fw:
             for line in res_list:
                 fw.write(str(line) + '\n')
     return loss, (acc, Precision, Recall, F1_macro, F1_micro)
@@ -132,27 +132,13 @@ class LSTM_WA(torch.nn.Module) :
         
         
     def attention(self, lstm_out, emoji_matrix):
-#         print("====lstm_out====")
-#         print(lstm_out)
-#         print("========")
-#         print(emoji_matrix.unsqueeze(0))
         seq_embeddings = []
         for emoji_idx in range(self.emoji_num):
             similarities = self.cosine_similarity(lstm_out, emoji_matrix[emoji_idx].unsqueeze(0), dim=-1)
-            
-#             print(similarities)
             simi_weights = F.softmax(similarities, dim=1).view(lstm_out.size()[0], -1, 1)
-#             print(simi_weights)
             seq_embedding = simi_weights * lstm_out
-#             print(seq_embedding)
-#             seq_embedding = torch.sum(seq_embedding, dim=1)
-#             print(seq_embedding)
-#             sys.exit()
             seq_embeddings.append(seq_embedding)
         seq_embeddings = torch.cat(seq_embeddings, dim=2)
-#         print(seq_embeddings)
-#         print(torch.mean(seq_embeddings))
-#         sys.exit()
         return seq_embeddings
 
     def init_hidden(self, batch_size, device) :

@@ -22,14 +22,12 @@ from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_sc
 test_mode = 0  # 0 for train+test 1 for test
 device = 0 # 0 for gpu, -1 for cpu
 
-bidirectional = True
 emoji_num = 5
 embedding_dim = 300
-hidden_dim = 300
 
-batch_size = 32
+batch_size = 3
 epochs = 4
-print_every = 500
+print_every = 100
 
 
 print('Reading data..')
@@ -53,6 +51,8 @@ test = data.TabularDataset(
 TEXT.build_vocab(train,valid,test, min_freq=5)
 print('Building vocabulary Finished.')
 
+
+
 train_iter = data.BucketIterator(dataset=train, batch_size=batch_size, sort_key=lambda x: len(x.Text), device=device, repeat=False)
 valid_iter = data.Iterator(dataset=valid, batch_size=batch_size, device=device, shuffle=False, repeat=False)
 test_iter = data.Iterator(dataset=test, batch_size=batch_size, device=device, shuffle=False, repeat=False)
@@ -63,6 +63,8 @@ valid_dl = datahelper.BatchWrapper(valid_iter, ["Text", "Label"])
 test_dl = datahelper.BatchWrapper(test_iter, ["Text", "Label"])
 print('Reading data done.')
 
+
+word_matrix = datahelper.wordlist_to_matrix("../data/embedding/top5embedding.txt", TEXT.vocab.itos, device, embedding_dim)
 
 def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     if model_state_path:
@@ -75,8 +77,7 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     loss = 0
 
     for text, label in data_dl:
-        hidden_state = MODEL.init_hidden(text.size()[0], device)
-        y_pred = MODEL(text, hidden_state)
+        y_pred = MODEL(text)
         
         loss += loss_func(y_pred, label).data.cpu()
         y_pred = y_pred.data.max(1)[1].cpu().numpy()
@@ -90,81 +91,31 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     F1_micro = f1_score(res_list, label_list, average="micro")
 
     if model_state_path:
-        with open('LSTM_A-Result.txt', 'w') as fw:
+        with open('SGVA-Result.txt', 'w') as fw:
             for line in res_list:
                 fw.write(str(line) + '\n')
     return loss, (acc, Precision, Recall, F1_macro, F1_micro)
 
 
-
-class LSTM_WA(torch.nn.Module) :
-    def __init__(self, vocab_size, emoji_num, embedding_dim, hidden_dim, batch_size, device, bidirectional):
-        super(LSTM_WA,self).__init__()
-        self.bidirectional = bidirectional
-        self.hidden_dim = hidden_dim
-        self.emoji_num = emoji_num
-        self.batch_size = batch_size
-        
+class SGVA(torch.nn.Module) :
+    def __init__(self, vocab_size, emoji_num, embedding_dim, wordvec_matrix):
+        super(SGVA,self).__init__()
         self.word_embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.emoji_matrix = torch.nn.Parameter(torch.rand(emoji_num, embedding_dim))
+        self.word_embedding.weight.data.copy_(wordvec_matrix)
+        self.word_embedding.weight.requires_grad = False
         
-        self.cosine_similarity = F.cosine_similarity
-        self.lstm = nn.LSTM(embedding_dim * emoji_num, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
-        self.linearOut = nn.Linear(hidden_dim, emoji_num)
-        
-    def forward(self, text, hidden_init) :
-        
-
-        word_embedding = self.word_embedding(text)
+        self.linearOut = nn.Linear(embedding_dim, emoji_num)
         
         
-        seq_embedding = self.attention(word_embedding, self.emoji_matrix)
-        lstm_out,(lstm_h, lstm_c) = self.lstm(seq_embedding, hidden_init)
- 
-        if not self.bidirectional:
-            linear_in = lstm_h.squeeze(0)
-        else:
-            linear_in = torch.cat((lstm_h[0], lstm_h[1]), dim=1)
-        
-            
-        linearo = self.linearOut(linear_in)
+    def forward(self, text) :
+        word_embeddings = self.word_embedding(text)
+        sequence_embeddings = torch.mean(word_embeddings, dim=1)
+        linearo = self.linearOut(sequence_embeddings)
         return F.log_softmax(linearo, dim=1)
-        
-        
-    def attention(self, lstm_out, emoji_matrix):
-#         print("====lstm_out====")
-#         print(lstm_out)
-#         print("========")
-#         print(emoji_matrix.unsqueeze(0))
-        seq_embeddings = []
-        for emoji_idx in range(self.emoji_num):
-            similarities = self.cosine_similarity(lstm_out, emoji_matrix[emoji_idx].unsqueeze(0), dim=-1)
-            
-#             print(similarities)
-            simi_weights = F.softmax(similarities, dim=1).view(lstm_out.size()[0], -1, 1)
-#             print(simi_weights)
-            seq_embedding = simi_weights * lstm_out
-#             print(seq_embedding)
-#             seq_embedding = torch.sum(seq_embedding, dim=1)
-#             print(seq_embedding)
-#             sys.exit()
-            seq_embeddings.append(seq_embedding)
-        seq_embeddings = torch.cat(seq_embeddings, dim=2)
-#         print(seq_embeddings)
-#         print(torch.mean(seq_embeddings))
-#         sys.exit()
-        return seq_embeddings
-
-    def init_hidden(self, batch_size, device) :
-        layer_num = 2 if self.bidirectional else 1
-        if device == -1:
-            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)))  
-        else:
-            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(), requires_grad=False))  
-
+    
 
 print('Initialing model..')
-MODEL = LSTM_WA(len(TEXT.vocab), emoji_num, embedding_dim, hidden_dim, batch_size, device, bidirectional)
+MODEL = SGVA(len(TEXT.vocab), emoji_num, embedding_dim, word_matrix)
 if device == 0:
     MODEL.cuda()
     
@@ -177,7 +128,8 @@ max_metric = 0
 # Train
 if not test_mode:
     loss_func = nn.NLLLoss()
-    optimizer = optim.Adam(MODEL.parameters(), lr=1e-2)
+    parameters = list(filter(lambda p: p.requires_grad, MODEL.parameters()))
+    optimizer = optim.Adam(parameters, lr=1e-2)
     print('Start training..')
 
     train_iter.create_batches()
@@ -189,8 +141,7 @@ if not test_mode:
         batch_count = 0
         for text, label in train_dl:
             MODEL = MODEL.train(True)
-            hidden_state = MODEL.init_hidden(text.size()[0], device)
-            y_pred = MODEL(text, hidden_state)
+            y_pred = MODEL(text)
             loss = loss_func(y_pred, label)
             MODEL.zero_grad()
             loss.backward()
@@ -203,12 +154,12 @@ if not test_mode:
                     best_state = MODEL.state_dict()
                     max_metric = F1_micro
                     print("Saving model..")
-                    torch.save(best_state, '../model_save/LSTM_WA.pth')           
+                    torch.save(best_state, '../model_save/SGVA.pth')           
                 print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_micro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_micro, float(loss)))
         
 
 
-loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.NLLLoss(), device, '../model_save/LSTM_WA.pth')
+loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl,nn.NLLLoss(), device, '../model_save/SGVA.pth')
 
 print("=================")
 print("Evaluation results on test dataset:")
@@ -217,5 +168,6 @@ print("Accuracy: {}.".format(acc))
 print("Precision: {}.".format(Precision))
 print("Recall: {}.".format(Recall))
 print("F1_micro: {}.".format(F1_micro))
+print("\n")
 print("F1_macro: {}.".format(F1_macro))
-print("=================")                        
+print("=================")

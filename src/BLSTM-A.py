@@ -19,7 +19,7 @@ from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_sc
 
 
 
-test_mode = 1  # 0 for train+test 1 for test
+test_mode = 0  # 0 for train+test 1 for test
 device = 0 # 0 for gpu, -1 for cpu
 
 bidirectional = False
@@ -139,7 +139,7 @@ class LSTM_A(torch.nn.Module) :
 #             sys.exit()
             seq_embeddings.append(seq_embedding)
 #         print(torch.cat(seq_embeddings, dim=1))
-        return torch.cat(seq_embeddings, dim=1).cuda() if device != -1 else torch.cat(seq_embeddings, dim=1)
+        return torch.cat(seq_embeddings, dim=1)
 
     def init_hidden(self, batch_size, device) :
         layer_num = 2 if self.bidirectional else 1
@@ -191,7 +191,7 @@ if not test_mode:
                     torch.save(best_state, '../model_save/BLSTM_A.pth')           
                 print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_micro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_micro, float(loss)))
         
-        
+
 loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.NLLLoss(), device, '../model_save/BLSTM_A.pth')
 
 print("=================")

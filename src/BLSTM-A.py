@@ -31,7 +31,6 @@ batch_size = 32
 epochs = 4
 print_every = 10
 
-
 print('Reading data..')
 normalize_pipeline = data.Pipeline(convert_token=datahelper.normalizeString)
 ID = data.Field(sequential=False, batch_first=True, use_vocab=False)
@@ -52,7 +51,6 @@ test = data.TabularDataset(
 
 TEXT.build_vocab(train,valid,test, min_freq=5)
 print('Building vocabulary Finished.')
-
 
 train_iter = data.BucketIterator(dataset=train, batch_size=batch_size, sort_key=lambda x: len(x.Text), device=device, repeat=False)
 valid_iter = data.Iterator(dataset=valid, batch_size=batch_size, device=device, shuffle=False, repeat=False)
@@ -150,7 +148,6 @@ class LSTM_A(torch.nn.Module) :
         else:
             return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(), requires_grad=False))  
 
-
 print('Initialing model..')
 MODEL = LSTM_A(len(TEXT.vocab), emoji_num, embedding_dim, hidden_dim, batch_size, device)
 if device == 0:
@@ -194,9 +191,7 @@ if not test_mode:
                     torch.save(best_state, '../model_save/BLSTM_A.pth')           
                 print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_micro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_micro, float(loss)))
         
-
-
-loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.MSELoss(), device, '../model_save/BLSTM-M.pth')
+loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.MSELoss(), device, '../model_save/BLSTM_A.pth')
 
 print("=================")
 print("Evaluation results on test dataset:")
@@ -206,4 +201,4 @@ print("Precision: {}.".format(Precision))
 print("Recall: {}.".format(Recall))
 print("F1_micro: {}.".format(F1_micro))
 print("F1_macro: {}.".format(F1_macro))
-print("=================")
+print("=================")            

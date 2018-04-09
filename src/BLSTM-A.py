@@ -19,7 +19,7 @@ from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_sc
 
 
 
-test_mode = 0  # 0 for train+test 1 for test
+test_mode = 1  # 0 for train+test 1 for test
 device = 0 # 0 for gpu, -1 for cpu
 
 bidirectional = False
@@ -29,7 +29,7 @@ hidden_dim = 300
 
 batch_size = 32
 epochs = 4
-print_every = 10
+print_every = 100
 
 print('Reading data..')
 normalize_pipeline = data.Pipeline(convert_token=datahelper.normalizeString)
@@ -191,7 +191,8 @@ if not test_mode:
                     torch.save(best_state, '../model_save/BLSTM_A.pth')           
                 print('Finish {}/{} batch, {}/{} epoch. Time consuming {}s. F1_micro is {}, Loss is {}'.format(batch_count, batch_num, i+1, epochs, round(batch_end - batch_start, 2), F1_micro, float(loss)))
         
-loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.MSELoss(), device, '../model_save/BLSTM_A.pth')
+        
+loss, (acc, Precision, Recall, F1_macro, F1_micro) = predict_on(MODEL, test_dl, nn.NLLLoss(), device, '../model_save/BLSTM_A.pth')
 
 print("=================")
 print("Evaluation results on test dataset:")

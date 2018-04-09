@@ -25,7 +25,7 @@ test_mode = 0  # 0 for train+test 1 for test
 
 bidirectional = True
 batch_size = 32
-epochs = 1
+epochs = 4
 print_every = 1000
 
 p_dropout = 0.3

@@ -37,7 +37,7 @@ normalize_pipeline = data.Pipeline(convert_token=datahelper.normalizeString)
 ID = data.Field(sequential=False, batch_first=True, use_vocab=False)
 EMOJI = data.Field(sequential=False, batch_first=True, use_vocab=False)
 TEXT = data.Field(sequential=True, lower=True, eos_token='<EOS>', init_token='<BOS>',
-                  pad_token='<PAD>', fix_length=None, batch_first=True,)
+                  pad_token='<PAD>', fix_length=None, batch_first=True, preprocessing=normalize_pipeline)
 LABEL = data.Field(sequential=False, batch_first=True, use_vocab=False)
 
 train = data.TabularDataset(
@@ -113,11 +113,7 @@ class LSTM_WA(torch.nn.Module) :
         self.linearOut = nn.Linear(hidden_dim, emoji_num)
         
     def forward(self, text, hidden_init) :
-        
-
         word_embedding = self.word_embedding(text)
-        
-        
         seq_embedding = self.attention(word_embedding, self.emoji_matrix)
         lstm_out,(lstm_h, lstm_c) = self.lstm(seq_embedding, hidden_init)
  

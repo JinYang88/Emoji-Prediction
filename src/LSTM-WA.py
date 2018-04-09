@@ -20,9 +20,9 @@ from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_sc
 
 
 test_mode = 0  # 0 for train+test 1 for test
-device = 0 # 0 for gpu, -1 for cpu
+device = -1 # 0 for gpu, -1 for cpu
 
-bidirectional = False
+bidirectional = True
 emoji_num = 5
 embedding_dim = 300
 hidden_dim = 300
@@ -96,8 +96,9 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     return loss, (acc, Precision, Recall, F1_macro, F1_micro)
 
 
+
 class LSTM_WA(torch.nn.Module) :
-    def __init__(self, vocab_size, emoji_num, embedding_dim, hidden_dim, batch_size, device):
+    def __init__(self, vocab_size, emoji_num, embedding_dim, hidden_dim, batch_size, device, bidirectional):
         super(LSTM_WA,self).__init__()
         self.bidirectional = bidirectional
         self.hidden_dim = hidden_dim
@@ -106,25 +107,27 @@ class LSTM_WA(torch.nn.Module) :
         
         self.word_embedding = nn.Embedding(vocab_size, embedding_dim)
         self.emoji_matrix = torch.nn.Parameter(torch.rand(emoji_num, embedding_dim))
-
         
         self.cosine_similarity = F.cosine_similarity
-        self.lstm = nn.LSTM(embedding_dim * emoji_num, hidden_dim, batch_first=True)
+        self.lstm = nn.LSTM(embedding_dim * emoji_num, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
         self.linearOut = nn.Linear(hidden_dim, emoji_num)
         
     def forward(self, text, hidden_init) :
         
-#         print(self.emoji_matrix)
 
         word_embedding = self.word_embedding(text)
         
         
         seq_embedding = self.attention(word_embedding, self.emoji_matrix)
-            
-#         print(seq_embedding)
-        
         lstm_out,(lstm_h, lstm_c) = self.lstm(seq_embedding, hidden_init)
-        linearo = self.linearOut(lstm_h.squeeze(0))
+ 
+        if not self.bidirectional:
+            linear_in = lstm_h.squeeze(0)
+        else:
+            linear_in = torch.cat((lstm_h[0], lstm_h[1]), dim=1)
+        
+            
+        linearo = self.linearOut(linear_in)
         return F.log_softmax(linearo, dim=1)
         
         
@@ -155,13 +158,13 @@ class LSTM_WA(torch.nn.Module) :
     def init_hidden(self, batch_size, device) :
         layer_num = 2 if self.bidirectional else 1
         if device == -1:
-            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim)))  
+            return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)))  
         else:
             return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(), requires_grad=False))  
 
 
 print('Initialing model..')
-MODEL = LSTM_WA(len(TEXT.vocab), emoji_num, embedding_dim, hidden_dim, batch_size, device)
+MODEL = LSTM_WA(len(TEXT.vocab), emoji_num, embedding_dim, hidden_dim, batch_size, device, bidirectional)
 if device == 0:
     MODEL.cuda()
     

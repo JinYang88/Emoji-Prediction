@@ -25,7 +25,7 @@ device = 0 # 0 for gpu, -1 for cpu
 bidirectional = True
 emoji_num = 5
 embedding_dim = 300
-hidden_dim = 800
+hidden_dim = 600
 
 batch_size = 32
 epochs = 4
@@ -109,9 +109,7 @@ class LSTM_WA(torch.nn.Module) :
         self.emoji_matrix = torch.nn.Parameter(torch.rand(emoji_num, embedding_dim))
         self.cosine_similarity = F.cosine_similarity
         self.lstm = nn.LSTM(embedding_dim * emoji_num, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
-        self.linearOut1 = nn.Linear(hidden_dim, hidden_dim//2)
-        self.linearOut2 = nn.Linear(hidden_dim//2, emoji_num)
-        self.drop_out = nn.Dropout(p=0.5)
+        self.linearOut = nn.Linear(hidden_dim, emoji_num)
         
     def forward(self, text, hidden_init) :
         
@@ -128,10 +126,8 @@ class LSTM_WA(torch.nn.Module) :
             linear_in = torch.cat((lstm_h[0], lstm_h[1]), dim=1)
         
             
-        linearo1 = self.linearOut1(linear_in)
-        linearo1 = F.relu(linearo1)
-        linearo2 = self.linearOut2(linearo1)
-        return F.log_softmax(linearo2, dim=1)
+        linearo = self.linearOut(linear_in)
+        return F.log_softmax(linearo, dim=1)
         
         
     def attention(self, lstm_out, emoji_matrix):

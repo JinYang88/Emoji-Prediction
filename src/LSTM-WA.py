@@ -129,7 +129,7 @@ class LSTM_WA(torch.nn.Module) :
         
             
         linearo1 = self.linearOut1(linear_in)
-        linearo1 = self.drop_out(linearo1)
+        linearo1 = F.relu(linearo1)
         linearo2 = self.linearOut2(linearo1)
         return F.log_softmax(linearo2, dim=1)
         

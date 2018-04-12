@@ -109,14 +109,14 @@ class LSTM_WA(torch.nn.Module) :
         self.emoji_matrix = torch.nn.Parameter(torch.rand(emoji_num, embedding_dim))
         self.cosine_similarity = F.cosine_similarity
         self.lstm = nn.LSTM(embedding_dim * emoji_num, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
-        self.linearOut = nn.Linear(hidden_dim, emoji_num)
+
+        self.linear1 = nn.Linear(hidden_dim, 200)
+        self.dropout1 = nn.Dropout(p=0.1)
+        self.batchnorm1 = nn.BatchNorm1d(200)
+        self.linear2 = nn.Linear(200, emoji_num)
         
     def forward(self, text, hidden_init) :
-        
-
         word_embedding = self.word_embedding(text)
-        
-        
         seq_embedding = self.attention(word_embedding, self.emoji_matrix)
         lstm_out,(lstm_h, lstm_c) = self.lstm(seq_embedding, hidden_init)
  
@@ -125,9 +125,15 @@ class LSTM_WA(torch.nn.Module) :
         else:
             linear_in = torch.cat((lstm_h[0], lstm_h[1]), dim=1)
         
-            
-        linearo = self.linearOut(linear_in)
-        return F.log_softmax(linearo, dim=1)
+        # linearo = self.linearOut(linear_in)
+
+        linearout_1 = self.linear1(linear_in)
+        linearout_1 = F.relu(linearout_1)
+        linearout_1 = self.dropout1(linearout_1)
+        linearout_1 = self.batchnorm1(linearout_1)
+        linearout_2 = self.linear2(linearout_1)
+        
+        return F.log_softmax(linearout_2, dim=1)
         
         
     def attention(self, lstm_out, emoji_matrix):
@@ -139,6 +145,7 @@ class LSTM_WA(torch.nn.Module) :
             seq_embeddings.append(seq_embedding)
         seq_embeddings = torch.cat(seq_embeddings, dim=2)
         return seq_embeddings
+
 
     def init_hidden(self, batch_size, device) :
         layer_num = 2 if self.bidirectional else 1

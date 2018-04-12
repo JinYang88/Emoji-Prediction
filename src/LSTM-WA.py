@@ -128,7 +128,7 @@ class LSTM_WA(torch.nn.Module) :
         # linearo = self.linearOut(linear_in)
 
         linearout_1 = self.linear1(linear_in)
-        linearout_1 = self.batchnorm1(linearout_1)
+        # linearout_1 = self.batchnorm1(linearout_1)
         linearout_1 = F.relu(linearout_1)
         linearout_1 = self.dropout1(linearout_1)
         linearout_2 = self.linear2(linearout_1)

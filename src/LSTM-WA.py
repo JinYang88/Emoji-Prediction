@@ -141,11 +141,11 @@ class LSTM_WA(torch.nn.Module) :
         # linearo = self.linearOut(linear_in)
 
         merged = self.linear1(linear_in)
-        merged = F.relu(merged)
+        merged = F.tanh(merged)
         merged = self.dropout1(merged)
 
         merged = self.linear2(merged)
-        merged = F.relu(merged)
+        merged = F.tanh(merged)
         merged = self.dropout2(merged)
 
         # merged = self.linear3(merged)

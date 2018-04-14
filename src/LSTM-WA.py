@@ -110,10 +110,23 @@ class LSTM_WA(torch.nn.Module) :
         self.cosine_similarity = F.cosine_similarity
         self.lstm = nn.LSTM(embedding_dim * emoji_num, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
 
+        # self.linear1 = nn.Linear(hidden_dim, 200)
+        # self.dropout1 = nn.Dropout(p=0.1)
+        # self.linear2 = nn.Linear(200, emoji_num)
+
         self.linear1 = nn.Linear(hidden_dim, 200)
         self.dropout1 = nn.Dropout(p=0.1)
-        self.batchnorm1 = nn.BatchNorm1d(200)
-        self.linear2 = nn.Linear(200, emoji_num)
+        # self.batchnorm1 = nn.BatchNorm1d(200)
+        self.linear2 = nn.Linear(200, 200)
+        self.dropout2 = nn.Dropout(p=0.1)
+        # self.batchnorm2 = nn.BatchNorm1d(200)
+        self.linear3 = nn.Linear(200, 200)
+        self.dropout3 = nn.Dropout(p=0.1)
+        # self.batchnorm3 = nn.BatchNorm1d(200)
+        self.linear4 = nn.Linear(200, 200)
+        self.dropout4 = nn.Dropout(p=0.1)
+        # self.batchnorm4 = nn.BatchNorm1d(200)
+        self.linear5 = nn.Linear(200, emoji_num)
         
     def forward(self, text, hidden_init) :
         word_embedding = self.word_embedding(text)
@@ -127,13 +140,21 @@ class LSTM_WA(torch.nn.Module) :
         
         # linearo = self.linearOut(linear_in)
 
-        linearout_1 = self.linear1(linear_in)
-        # linearout_1 = self.batchnorm1(linearout_1)
-        linearout_1 = F.relu(linearout_1)
-        linearout_1 = self.dropout1(linearout_1)
-        linearout_2 = self.linear2(linearout_1)
-        
-        return F.log_softmax(linearout_2, dim=1)
+        merged = self.linear1(linear_in)
+        merged = F.relu(merged)
+        merged = self.dropout1(merged)
+        merged = self.linear2(merged)
+        merged = F.relu(merged)
+        merged = self.dropout2(merged)
+        merged = self.linear3(merged)
+        merged = F.relu(merged)
+        merged = self.dropout3(merged)
+        merged = self.linear4(merged)
+        merged = F.relu(merged)
+        merged = self.dropout4(merged)
+        merged = self.linear5(merged)
+
+        return F.log_softmax(merged, dim=1)
         
         
     def attention(self, lstm_out, emoji_matrix):

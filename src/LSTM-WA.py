@@ -148,13 +148,13 @@ class LSTM_WA(torch.nn.Module) :
         merged = F.relu(merged)
         merged = self.dropout2(merged)
 
-        merged = self.linear3(merged)
-        merged = F.relu(merged)
-        merged = self.dropout3(merged)
+        # merged = self.linear3(merged)
+        # merged = F.relu(merged)
+        # merged = self.dropout3(merged)
 
-        merged = self.linear4(merged)
-        merged = F.relu(merged)
-        merged = self.dropout4(merged)
+        # merged = self.linear4(merged)
+        # merged = F.relu(merged)
+        # merged = self.dropout4(merged)
 
         merged = self.linear5(merged)
 

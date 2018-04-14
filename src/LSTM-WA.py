@@ -28,7 +28,7 @@ embedding_dim = 300
 hidden_dim = 600
 
 batch_size = 32
-epochs = 4
+epochs = 20
 print_every = 500
 
 
@@ -115,16 +115,16 @@ class LSTM_WA(torch.nn.Module) :
         # self.linear2 = nn.Linear(200, emoji_num)
 
         self.linear1 = nn.Linear(hidden_dim, 200)
-        self.dropout1 = nn.Dropout(p=0.5)
+        self.dropout1 = nn.Dropout(p=0.3)
         # self.batchnorm1 = nn.BatchNorm1d(200)
         self.linear2 = nn.Linear(200, 200)
-        self.dropout2 = nn.Dropout(p=0.5)
+        self.dropout2 = nn.Dropout(p=0.3)
         # self.batchnorm2 = nn.BatchNorm1d(200)
         self.linear3 = nn.Linear(200, 200)
-        self.dropout3 = nn.Dropout(p=0.5)
+        self.dropout3 = nn.Dropout(p=0.3)
         # self.batchnorm3 = nn.BatchNorm1d(200)
         self.linear4 = nn.Linear(200, 200)
-        self.dropout4 = nn.Dropout(p=0.5)
+        self.dropout4 = nn.Dropout(p=0.3)
         # self.batchnorm4 = nn.BatchNorm1d(200)
         self.linear5 = nn.Linear(200, emoji_num)
         
@@ -148,13 +148,13 @@ class LSTM_WA(torch.nn.Module) :
         merged = F.tanh(merged)
         merged = self.dropout2(merged)
 
-        # merged = self.linear3(merged)
-        # merged = F.relu(merged)
-        # merged = self.dropout3(merged)
+        merged = self.linear3(merged)
+        merged = F.relu(merged)
+        merged = self.dropout3(merged)
 
-        # merged = self.linear4(merged)
-        # merged = F.relu(merged)
-        # merged = self.dropout4(merged)
+        merged = self.linear4(merged)
+        merged = F.relu(merged)
+        merged = self.dropout4(merged)
 
         merged = self.linear5(merged)
 

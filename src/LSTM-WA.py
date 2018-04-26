@@ -25,7 +25,7 @@ device = 0 # 0 for gpu, -1 for cpu
 bidirectional = True
 emoji_num = 5
 embedding_dim = 300
-hidden_dim = 600
+hidden_dim = 300
 
 batch_size = 32
 epochs = 20
@@ -171,7 +171,7 @@ class LSTM_WA(torch.nn.Module) :
 
     # New
     def attention(self, lstm_out, emoji_matrix):
-        avg_vec = torch.zeros(lstm_out.size())
+        avg_vec = torch.zeros(lstm_out.size()) if self.device ==0 else torch.zeros(lstm_out.size()).cuda()
         for emoji_idx in range(self.emoji_num):
 #             similarities = self.cosine_similarity(lstm_out, emoji_matrix[emoji_idx].unsqueeze(0), dim=-1)
             avg_vec += (emoji_matrix[emoji_idx].unsqueeze(0) * lstm_out).data

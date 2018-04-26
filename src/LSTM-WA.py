@@ -22,10 +22,10 @@ torch.manual_seed(42)
 test_mode = 0  # 0 for train+test 1 for test
 device = 0 # 0 for gpu, -1 for cpu
 
-bidirectional = True
+bidirectional = False
 emoji_num = 5
-embedding_dim = 300
-hidden_dim = 300
+embedding_dim = 400
+hidden_dim = 400
 
 batch_size = 32
 epochs = 20
@@ -90,7 +90,7 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     F1_micro = f1_score(res_list, label_list, average="micro")
 
     if model_state_path:
-        with open('LSTM_A-Result.txt', 'w') as fw:
+        with open('LSTM_WA-Result.txt', 'w') as fw:
             for line in res_list:
                 fw.write(str(line) + '\n')
     return loss, (acc, Precision, Recall, F1_macro, F1_micro)
@@ -109,19 +109,19 @@ class LSTM_WA(torch.nn.Module) :
         self.word_embedding = nn.Embedding(vocab_size, embedding_dim)
         self.emoji_matrix = torch.nn.Parameter(torch.rand(emoji_num, embedding_dim))
         self.cosine_similarity = F.cosine_similarity
-        self.rnn1 = nn.LSTM(embedding_dim, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
-        self.rnn2 = nn.LSTM(hidden_dim // 2 if self.bidirectional else hidden_dim, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
+        self.rnn1 = nn.GRU(embedding_dim, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
+        self.rnn2 = nn.GRU(hidden_dim // 2 if self.bidirectional else hidden_dim, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
 #         self.linearOut = nn.Linear(hidden_dim, emoji_num)
         
-        self.linear1 = nn.Linear(hidden_dim, 200)
-        self.dropout1 = nn.Dropout(p=0.3)
-        self.linear2 = nn.Linear(200, 200)
-        self.dropout2 = nn.Dropout(p=0.3)
-        self.linear3 = nn.Linear(200, 200)
-        self.dropout3 = nn.Dropout(p=0.3)
-        self.linear4 = nn.Linear(200, 200)
-        self.dropout4 = nn.Dropout(p=0.3)
-        self.linear5 = nn.Linear(200, emoji_num)
+        self.linear1 = nn.Linear(hidden_dim, 300)
+        self.dropout1 = nn.Dropout(p=0.7)
+        self.linear2 = nn.Linear(300, 300)
+        self.dropout2 = nn.Dropout(p=0.7)
+        self.linear3 = nn.Linear(300, 300)
+        self.dropout3 = nn.Dropout(p=0.7)
+        self.linear4 = nn.Linear(300, 300)
+        self.dropout4 = nn.Dropout(p=0.7)
+        self.linear5 = nn.Linear(300, emoji_num)
         
     def forward(self, text, hidden_init) :
         word_embedding = self.word_embedding(text)
@@ -147,13 +147,13 @@ class LSTM_WA(torch.nn.Module) :
         merged = F.relu(merged)
         merged = self.dropout2(merged)
 
-        merged = self.linear3(merged)
-        merged = F.relu(merged)
-        merged = self.dropout3(merged)
+        # merged = self.linear3(merged)
+        # merged = F.relu(merged)
+        # merged = self.dropout3(merged)
 
-        merged = self.linear4(merged)
-        merged = F.relu(merged)
-        merged = self.dropout4(merged)
+        # merged = self.linear4(merged)
+        # merged = F.relu(merged)
+        # merged = self.dropout4(merged)
 
         merged = self.linear5(merged)
 

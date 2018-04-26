@@ -104,6 +104,7 @@ class LSTM_WA(torch.nn.Module) :
         self.hidden_dim = hidden_dim
         self.emoji_num = emoji_num
         self.batch_size = batch_size
+        self.device = device
         
         self.word_embedding = nn.Embedding(vocab_size, embedding_dim)
         self.emoji_matrix = torch.nn.Parameter(torch.rand(emoji_num, embedding_dim))

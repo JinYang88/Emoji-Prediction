@@ -109,8 +109,8 @@ class LSTM_WA(torch.nn.Module) :
         self.word_embedding = nn.Embedding(vocab_size, embedding_dim)
         self.emoji_matrix = torch.nn.Parameter(torch.rand(emoji_num, embedding_dim))
         self.cosine_similarity = F.cosine_similarity
-        self.rnn1 = nn.GRU(embedding_dim, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
-        self.rnn2 = nn.GRU(hidden_dim // 2 if self.bidirectional else hidden_dim, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
+        self.rnn1 = nn.LSTM(embedding_dim, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
+        self.rnn2 = nn.LSTM(hidden_dim // 2 if self.bidirectional else hidden_dim, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
 #         self.linearOut = nn.Linear(hidden_dim, emoji_num)
         
         self.linear1 = nn.Linear(hidden_dim, 300)

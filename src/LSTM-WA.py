@@ -108,44 +108,42 @@ class LSTM_WA(torch.nn.Module) :
         self.word_embedding = nn.Embedding(vocab_size, embedding_dim)
         self.emoji_matrix = torch.nn.Parameter(torch.rand(emoji_num, embedding_dim))
         self.cosine_similarity = F.cosine_similarity
-        self.lstm = nn.LSTM(embedding_dim * emoji_num, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
-
-        # self.linear1 = nn.Linear(hidden_dim, 200)
-        # self.dropout1 = nn.Dropout(p=0.1)
-        # self.linear2 = nn.Linear(200, emoji_num)
-
+        self.rnn1 = nn.LSTM(embedding_dim, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
+        self.rnn2 = nn.LSTM(hidden_dim // 2 if self.bidirectional else hidden_dim, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
+#         self.linearOut = nn.Linear(hidden_dim, emoji_num)
+        
         self.linear1 = nn.Linear(hidden_dim, 200)
         self.dropout1 = nn.Dropout(p=0.3)
-        # self.batchnorm1 = nn.BatchNorm1d(200)
         self.linear2 = nn.Linear(200, 200)
         self.dropout2 = nn.Dropout(p=0.3)
-        # self.batchnorm2 = nn.BatchNorm1d(200)
         self.linear3 = nn.Linear(200, 200)
         self.dropout3 = nn.Dropout(p=0.3)
-        # self.batchnorm3 = nn.BatchNorm1d(200)
         self.linear4 = nn.Linear(200, 200)
         self.dropout4 = nn.Dropout(p=0.3)
-        # self.batchnorm4 = nn.BatchNorm1d(200)
         self.linear5 = nn.Linear(200, emoji_num)
         
     def forward(self, text, hidden_init) :
         word_embedding = self.word_embedding(text)
-        seq_embedding = self.attention(word_embedding, self.emoji_matrix)
-        lstm_out,(lstm_h, lstm_c) = self.lstm(seq_embedding, hidden_init)
- 
+        lstm_out,(lstm_h, lstm_c) = self.rnn1(word_embedding, hidden_init)
+        seq_embeddings = self.attention(lstm_out, self.emoji_matrix)
+        lstm_out,(lstm_h, lstm_c) = self.rnn2(seq_embeddings, hidden_init)
+
+    
         if not self.bidirectional:
             linear_in = lstm_h.squeeze(0)
         else:
             linear_in = torch.cat((lstm_h[0], lstm_h[1]), dim=1)
         
-        # linearo = self.linearOut(linear_in)
-
+#         linearo = self.linearOut(linear_in)
+# #         print(F.log_softmax(linearo, dim=1))
+#         return F.log_softmax(linearo, dim=1)
+        
         merged = self.linear1(linear_in)
-        merged = F.tanh(merged)
+        merged = F.relu(merged)
         merged = self.dropout1(merged)
 
         merged = self.linear2(merged)
-        merged = F.tanh(merged)
+        merged = F.relu(merged)
         merged = self.dropout2(merged)
 
         merged = self.linear3(merged)
@@ -160,24 +158,37 @@ class LSTM_WA(torch.nn.Module) :
 
         return F.log_softmax(merged, dim=1)
         
-        
+#     Concat
+#     def attention(self, lstm_out, emoji_matrix):
+#         seq_embeddings = []
+#         for emoji_idx in range(self.emoji_num):
+#             similarities = self.cosine_similarity(lstm_out, emoji_matrix[emoji_idx].unsqueeze(0), dim=-1)
+#             simi_weights = F.softmax(similarities, dim=1).view(lstm_out.size()[0], -1, 1)
+#             seq_embedding = simi_weights * lstm_out
+#             seq_embeddings.append(seq_embedding)
+#         seq_embeddings = torch.cat(seq_embeddings, dim=2)
+#         return seq_embeddings
+
+    # New
     def attention(self, lstm_out, emoji_matrix):
-        seq_embeddings = []
+        avg_vec = torch.zeros(lstm_out.size())
         for emoji_idx in range(self.emoji_num):
-            similarities = self.cosine_similarity(lstm_out, emoji_matrix[emoji_idx].unsqueeze(0), dim=-1)
-            simi_weights = F.softmax(similarities, dim=1).view(lstm_out.size()[0], -1, 1)
-            seq_embedding = simi_weights * lstm_out
-            seq_embeddings.append(seq_embedding)
-        seq_embeddings = torch.cat(seq_embeddings, dim=2)
-        return seq_embeddings
-
-
+#             similarities = self.cosine_similarity(lstm_out, emoji_matrix[emoji_idx].unsqueeze(0), dim=-1)
+            avg_vec += (emoji_matrix[emoji_idx].unsqueeze(0) * lstm_out).data
+#             print((emoji_matrix[emoji_idx].unsqueeze(0) * lstm_out)[0][0][0:5])
+#             print(avg_vec[0][0][0:5])
+#             print("------end---------")
+        avg_vec /= self.emoji_num
+        return Variable(avg_vec)
+        
+        
     def init_hidden(self, batch_size, device) :
         layer_num = 2 if self.bidirectional else 1
         if device == -1:
             return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)))  
         else:
             return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(), requires_grad=False))  
+
 
 
 

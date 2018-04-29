@@ -116,9 +116,9 @@ class LSTM_WA(torch.nn.Module) :
         self.linear2 = nn.Linear(300, 300)
         self.dropout2 = nn.Dropout(p=0.5)
         self.linear3 = nn.Linear(300, 300)
-        # self.dropout3 = nn.Dropout(p=0.1)
-        # self.linear4 = nn.Linear(300, 300)
-        # self.dropout4 = nn.Dropout(p=0.1)
+        self.dropout3 = nn.Dropout(p=0.1)
+        self.linear4 = nn.Linear(300, 300)
+        self.dropout4 = nn.Dropout(p=0.1)
         self.linear5 = nn.Linear(300, emoji_num)
         
     def forward(self, text, hidden_init=None) :
@@ -145,13 +145,13 @@ class LSTM_WA(torch.nn.Module) :
         merged = F.relu(merged)
         merged = self.dropout2(merged)
 
-        merged = self.linear3(merged)
-        merged = F.relu(merged)
-        merged = self.dropout3(merged)
+        # merged = self.linear3(merged)
+        # merged = F.relu(merged)
+        # merged = self.dropout3(merged)
 
-        merged = self.linear4(merged)
-        merged = F.relu(merged)
-        merged = self.dropout4(merged)
+        # merged = self.linear4(merged)
+        # merged = F.relu(merged)
+        # merged = self.dropout4(merged)
 
         merged = self.linear5(merged)
         

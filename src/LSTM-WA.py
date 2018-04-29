@@ -51,7 +51,7 @@ test = data.TabularDataset(
         path='../data/tweet/multi/top{}/test.csv'.format(emoji_num), format='csv',
         fields=[('Id', ID), ('Text', TEXT), ('Label', LABEL)], skip_header=True)
 
-TEXT.build_vocab(train,valid,test, min_freq=3)
+TEXT.build_vocab(train,valid, min_freq=3)
 print('Building vocabulary Finished.')
 
 
@@ -64,6 +64,7 @@ train_dl = datahelper.BatchWrapper(train_iter, ["Text", "Label"])
 valid_dl = datahelper.BatchWrapper(valid_iter, ["Text", "Label"])
 test_dl = datahelper.BatchWrapper(test_iter, ["Text", "Label"])
 print('Reading data done.')
+
 
 def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     if model_state_path:
@@ -189,6 +190,7 @@ class LSTM_WA(torch.nn.Module) :
             return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)))  
         else:
             return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(), requires_grad=False))  
+
 
 
 

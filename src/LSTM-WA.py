@@ -115,7 +115,7 @@ class LSTM_WA(torch.nn.Module) :
 #         self.linearOut = nn.Linear(hidden_dim, emoji_num)
         self.mp = nn.MaxPool1d(hidden_dim, stride=1)
         
-        self.linear1 = nn.Linear(fixlen, 200)
+        self.linear1 = nn.Linear(hidden_dim, 200)
         self.batchnorm1 = nn.BatchNorm1d(200)
         self.linear2 = nn.Linear(200, 200)
         self.batchnorm2 = nn.BatchNorm1d(200)

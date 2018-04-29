@@ -75,9 +75,7 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     loss = 0
 
     for text, label in data_dl:
-        hidden_state = MODEL.init_hidden(text.size()[0], device)
-        y_pred = MODEL(text, hidden_state)
-        
+        y_pred = model(text)
         loss += loss_func(y_pred, label).data.cpu()
         y_pred = y_pred.data.max(1)[1].cpu().numpy()
         res_list.extend(y_pred)
@@ -90,7 +88,7 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     F1_micro = f1_score(res_list, label_list, average="micro")
 
     if model_state_path:
-        with open('LSTM_WA-Result.txt', 'w') as fw:
+        with open('LSTM_A-Result.txt', 'w') as fw:
             for line in res_list:
                 fw.write(str(line) + '\n')
     return loss, (acc, Precision, Recall, F1_macro, F1_micro)
@@ -109,25 +107,25 @@ class LSTM_WA(torch.nn.Module) :
         self.word_embedding = nn.Embedding(vocab_size, embedding_dim)
         self.emoji_matrix = torch.nn.Parameter(torch.rand(emoji_num, embedding_dim))
         self.cosine_similarity = F.cosine_similarity
-        self.rnn1 = nn.LSTM(embedding_dim, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
-        self.rnn2 = nn.LSTM(hidden_dim // 2 if self.bidirectional else hidden_dim, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
+        self.rnn1 = nn.GRU(embedding_dim, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
+        self.rnn2 = nn.GRU(hidden_dim // 2 if self.bidirectional else hidden_dim, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
 #         self.linearOut = nn.Linear(hidden_dim, emoji_num)
         
-        self.linear1 = nn.Linear(hidden_dim, 300)
-        self.dropout1 = nn.Dropout(p=0.7)
-        self.linear2 = nn.Linear(300, 300)
-        self.dropout2 = nn.Dropout(p=0.7)
-        self.linear3 = nn.Linear(300, 300)
-        self.dropout3 = nn.Dropout(p=0.7)
-        self.linear4 = nn.Linear(300, 300)
-        self.dropout4 = nn.Dropout(p=0.7)
-        self.linear5 = nn.Linear(300, emoji_num)
+        self.linear1 = nn.Linear(hidden_dim, 200)
+        self.dropout1 = nn.Dropout(p=0.5)
+        self.linear2 = nn.Linear(200, 200)
+        self.dropout2 = nn.Dropout(p=0.5)
+        self.linear3 = nn.Linear(200, 200)
+        self.dropout3 = nn.Dropout(p=0.3)
+        self.linear4 = nn.Linear(200, 200)
+        self.dropout4 = nn.Dropout(p=0.3)
+        self.linear5 = nn.Linear(200, emoji_num)
         
-    def forward(self, text, hidden_init) :
+    def forward(self, text, hidden_init=None) :
         word_embedding = self.word_embedding(text)
-        lstm_out,(lstm_h, lstm_c) = self.rnn1(word_embedding, hidden_init)
+        lstm_out, lstm_h = self.rnn1(word_embedding, hidden_init)
         seq_embeddings = self.attention(lstm_out, self.emoji_matrix)
-        lstm_out,(lstm_h, lstm_c) = self.rnn2(seq_embeddings, hidden_init)
+        lstm_out, lstm_h = self.rnn2(seq_embeddings, hidden_init)
 
     
         if not self.bidirectional:
@@ -147,15 +145,18 @@ class LSTM_WA(torch.nn.Module) :
         merged = F.relu(merged)
         merged = self.dropout2(merged)
 
-        # merged = self.linear3(merged)
-        # merged = F.relu(merged)
-        # merged = self.dropout3(merged)
+#         merged = self.linear3(merged)
+#         merged = F.relu(merged)
+#         merged = self.dropout3(merged)
 
-        # merged = self.linear4(merged)
-        # merged = F.relu(merged)
-        # merged = self.dropout4(merged)
+#         merged = self.linear4(merged)
+#         merged = F.relu(merged)
+#         merged = self.dropout4(merged)
 
         merged = self.linear5(merged)
+        
+#         print(merged.requires_grad)
+#         sys.exit()
 
         return F.log_softmax(merged, dim=1)
         
@@ -180,7 +181,7 @@ class LSTM_WA(torch.nn.Module) :
 #             print(avg_vec[0][0][0:5])
 #             print("------end---------")
         avg_vec /= self.emoji_num
-        # print(avg_vec.requires_grad)
+        print(avg_vec.requires_grad)
         return avg_vec
         
         
@@ -190,8 +191,6 @@ class LSTM_WA(torch.nn.Module) :
             return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num)))  
         else:
             return (Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(), requires_grad=False),Variable(torch.randn(layer_num, batch_size, self.hidden_dim//layer_num).cuda(), requires_grad=False))  
-
-
 
 
 print('Initialing model..')
@@ -208,7 +207,7 @@ max_metric = 0
 # Train
 if not test_mode:
     loss_func = nn.NLLLoss()
-    optimizer = optim.Adam(MODEL.parameters(), lr=1e-3)
+    optimizer = optim.Adam(MODEL.parameters(), lr=1e-2)
     print('Start training..')
 
     train_iter.create_batches()
@@ -219,9 +218,8 @@ if not test_mode:
         train_iter.init_epoch()
         batch_count = 0
         for text, label in train_dl:
-            MODEL.train(True)
-            hidden_state = MODEL.init_hidden(text.size()[0], device)
-            y_pred = MODEL(text, hidden_state)
+            MODEL.train()
+            y_pred = MODEL(text)
             loss = loss_func(y_pred, label)
             MODEL.zero_grad()
             loss.backward()

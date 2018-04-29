@@ -138,12 +138,13 @@ class LSTM_WA(torch.nn.Module) :
 #         return F.log_softmax(linearo, dim=1)
         
         merged = self.linear1(linear_in)
-        merged = F.relu(merged)
         merged = self.dropout1(merged)
+        merged = F.relu(merged)
+
 
         merged = self.linear2(merged)
-        merged = F.relu(merged)
         merged = self.dropout2(merged)
+        merged = F.relu(merged)
 
         # merged = self.linear3(merged)
         # merged = F.relu(merged)

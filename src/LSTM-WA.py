@@ -112,13 +112,13 @@ class LSTM_WA(torch.nn.Module) :
 #         self.linearOut = nn.Linear(hidden_dim, emoji_num)
         
         self.linear1 = nn.Linear(hidden_dim, 200)
-        self.dropout1 = nn.Dropout(p=0.5)
+        self.dropout1 = nn.Dropout(p=0.1)
         self.linear2 = nn.Linear(200, 200)
-        self.dropout2 = nn.Dropout(p=0.5)
+        self.dropout2 = nn.Dropout(p=0.1)
         self.linear3 = nn.Linear(200, 200)
-        self.dropout3 = nn.Dropout(p=0.3)
+        self.dropout3 = nn.Dropout(p=0.1)
         self.linear4 = nn.Linear(200, 200)
-        self.dropout4 = nn.Dropout(p=0.3)
+        self.dropout4 = nn.Dropout(p=0.1)
         self.linear5 = nn.Linear(200, emoji_num)
         
     def forward(self, text, hidden_init=None) :

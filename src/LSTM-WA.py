@@ -127,7 +127,8 @@ class LSTM_WA(torch.nn.Module) :
         seq_embeddings = self.attention(lstm_out, self.emoji_matrix)
         lstm_out, lstm_h = self.rnn2(seq_embeddings, hidden_init)
         
-        linear_in = self.rnn_maxpooling(lstm_out).view(self.batch_size, -1)
+        linear_in = lstm_h.squeeze(0)
+        # linear_in = self.rnn_maxpooling(lstm_out).view(self.batch_size, -1)
         
 #         print(linear_in.shape)
         merged = self.linear1(linear_in)
@@ -205,11 +206,11 @@ max_metric = 0
 
 # Train
 if not test_mode:
-    for name, param in MODEL.named_parameters():
-        if 'bias' in name:
-             nn.init.constant(param, 0.0)
-        elif 'weight' in name:
-             nn.init.xavier_normal(param)
+    # for name, param in MODEL.named_parameters():
+    #     if 'bias' in name:
+    #          nn.init.constant(param, 0.0)
+    #     elif 'weight' in name:
+    #          nn.init.xavier_normal(param)
 
     loss_func = nn.NLLLoss()
     optimizer = optim.Adam(MODEL.parameters(), lr=1e-3)

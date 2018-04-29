@@ -206,6 +206,12 @@ max_metric = 0
 
 # Train
 if not test_mode:
+    for name, param in MODEL.named_parameters():
+        if 'bias' in name:
+             nn.init.constant(param, 0.0)
+        elif 'weight' in name:
+             nn.init.xavier_normal(param)
+             
     loss_func = nn.NLLLoss()
     optimizer = optim.Adam(MODEL.parameters(), lr=1e-3)
     print('Start training..')

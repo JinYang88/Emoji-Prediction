@@ -127,8 +127,8 @@ class LSTM_WA(torch.nn.Module) :
         seq_embeddings = self.attention(lstm_out, self.emoji_matrix)
         lstm_out, lstm_h = self.rnn2(seq_embeddings, hidden_init)
         
-        linear_in = lstm_h.squeeze(0)
-        # linear_in = self.rnn_maxpooling(lstm_out).view(self.batch_size, -1)
+        # linear_in = lstm_h.squeeze(0)
+        linear_in = self.rnn_maxpooling(lstm_out).view(self.batch_size, -1)
         
 #         print(linear_in.shape)
         merged = self.linear1(linear_in)
@@ -136,7 +136,7 @@ class LSTM_WA(torch.nn.Module) :
         merged = F.relu(merged)
 
         merged = self.linear2(merged)
-        # merged = self.batchnorm1(merged)
+        merged = self.batchnorm1(merged)
         merged = F.relu(merged)
 
 #         merged = self.linear3(merged)

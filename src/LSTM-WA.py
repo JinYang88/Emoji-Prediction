@@ -145,13 +145,13 @@ class LSTM_WA(torch.nn.Module) :
         merged = F.relu(merged)
         merged = self.dropout2(merged)
 
-#         merged = self.linear3(merged)
-#         merged = F.relu(merged)
-#         merged = self.dropout3(merged)
+        merged = self.linear3(merged)
+        merged = F.relu(merged)
+        merged = self.dropout3(merged)
 
-#         merged = self.linear4(merged)
-#         merged = F.relu(merged)
-#         merged = self.dropout4(merged)
+        merged = self.linear4(merged)
+        merged = F.relu(merged)
+        merged = self.dropout4(merged)
 
         merged = self.linear5(merged)
         
@@ -181,7 +181,7 @@ class LSTM_WA(torch.nn.Module) :
 #             print(avg_vec[0][0][0:5])
 #             print("------end---------")
         avg_vec /= self.emoji_num
-        print(avg_vec.requires_grad)
+        # print(avg_vec.requires_grad)
         return avg_vec
         
         

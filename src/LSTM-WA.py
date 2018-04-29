@@ -78,6 +78,7 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
 
     for text, label in data_dl:
         y_pred = MODEL(text)
+        
         loss += loss_func(y_pred, label).data.cpu()
         y_pred = y_pred.data.max(1)[1].cpu().numpy()
         res_list.extend(y_pred)
@@ -115,13 +116,9 @@ class LSTM_WA(torch.nn.Module) :
         self.mp = nn.MaxPool1d(hidden_dim, stride=1)
         
         self.linear1 = nn.Linear(fixlen, 200)
-        self.dropout1 = nn.Dropout(p=0.5)
+        self.batchnorm1 = nn.BatchNorm1d(200)
         self.linear2 = nn.Linear(200, 200)
-        self.dropout2 = nn.Dropout(p=0.5)
-        self.linear3 = nn.Linear(200, 200)
-        self.dropout3 = nn.Dropout(p=0.3)
-        self.linear4 = nn.Linear(200, 200)
-        self.dropout4 = nn.Dropout(p=0.3)
+        self.batchnorm2 = nn.BatchNorm1d(200)
         self.linear5 = nn.Linear(200, emoji_num)
         
     def forward(self, text, hidden_init=None) :
@@ -130,14 +127,16 @@ class LSTM_WA(torch.nn.Module) :
         seq_embeddings = self.attention(lstm_out, self.emoji_matrix)
         lstm_out, lstm_h = self.rnn2(seq_embeddings, hidden_init)
         
-        linear_in = self.rnn_maxpooling(lstm_out).view(lstm_out.size()[0], -1)
+        linear_in = self.rnn_maxpooling(lstm_out).view(self.batch_size, -1)
         
 #         print(linear_in.shape)
         merged = self.linear1(linear_in)
         merged = F.relu(merged)
+        merged = self.batchnorm1(merged)
 
         merged = self.linear2(merged)
         merged = F.relu(merged)
+        merged = self.batchnorm1(merged)
 
 #         merged = self.linear3(merged)
 #         merged = F.relu(merged)
@@ -211,7 +210,7 @@ if not test_mode:
              nn.init.constant(param, 0.0)
         elif 'weight' in name:
              nn.init.xavier_normal(param)
-             
+
     loss_func = nn.NLLLoss()
     optimizer = optim.Adam(MODEL.parameters(), lr=1e-3)
     print('Start training..')

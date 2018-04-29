@@ -172,7 +172,7 @@ class LSTM_WA(torch.nn.Module) :
 
     # New
     def attention(self, lstm_out, emoji_matrix):
-        avg_vec = torch.zeros(lstm_out.size()) if self.device != 0 else torch.zeros(lstm_out.size()).cuda()
+        avg_vec = Variable(torch.zeros(lstm_out.size()) if self.device != 0 else torch.zeros(lstm_out.size()).cuda())
         for emoji_idx in range(self.emoji_num):
 #             similarities = self.cosine_similarity(lstm_out, emoji_matrix[emoji_idx].unsqueeze(0), dim=-1)
             avg_vec = avg_vec + (emoji_matrix[emoji_idx].unsqueeze(0) * lstm_out).data
@@ -180,7 +180,7 @@ class LSTM_WA(torch.nn.Module) :
 #             print(avg_vec[0][0][0:5])
 #             print("------end---------")
         avg_vec /= self.emoji_num
-        return Variable(avg_vec)
+        return avg_vec
         
         
     def init_hidden(self, batch_size, device) :

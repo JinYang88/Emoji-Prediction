@@ -78,7 +78,6 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
 
     for text, label in data_dl:
         y_pred = MODEL(text)
-        
         loss += loss_func(y_pred, label).data.cpu()
         y_pred = y_pred.data.max(1)[1].cpu().numpy()
         res_list.extend(y_pred)
@@ -131,7 +130,7 @@ class LSTM_WA(torch.nn.Module) :
         seq_embeddings = self.attention(lstm_out, self.emoji_matrix)
         lstm_out, lstm_h = self.rnn2(seq_embeddings, hidden_init)
         
-        linear_in = self.rnn_maxpooling(lstm_out).view(self.batch_size, -1)
+        linear_in = self.rnn_maxpooling(lstm_out).view(lstm_out.size()[0], -1)
         
 #         print(linear_in.shape)
         merged = self.linear1(linear_in)

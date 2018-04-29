@@ -175,11 +175,12 @@ class LSTM_WA(torch.nn.Module) :
         avg_vec = Variable(torch.zeros(lstm_out.size()) if self.device != 0 else torch.zeros(lstm_out.size()).cuda())
         for emoji_idx in range(self.emoji_num):
 #             similarities = self.cosine_similarity(lstm_out, emoji_matrix[emoji_idx].unsqueeze(0), dim=-1)
-            avg_vec = avg_vec + (emoji_matrix[emoji_idx].unsqueeze(0) * lstm_out).data
+            avg_vec = avg_vec + (emoji_matrix[emoji_idx].unsqueeze(0) * lstm_out)
 #             print((emoji_matrix[emoji_idx].unsqueeze(0) * lstm_out)[0][0][0:5])
 #             print(avg_vec[0][0][0:5])
 #             print("------end---------")
         avg_vec /= self.emoji_num
+        # print(avg_vec.requires_grad)
         return avg_vec
         
         

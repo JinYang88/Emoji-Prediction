@@ -136,7 +136,7 @@ class LSTM_WA(torch.nn.Module) :
         merged = F.relu(merged)
 
         merged = self.linear2(merged)
-        merged = self.batchnorm1(merged)
+        # merged = self.batchnorm1(merged)
         merged = F.relu(merged)
 
 #         merged = self.linear3(merged)

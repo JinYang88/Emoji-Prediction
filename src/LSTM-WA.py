@@ -27,7 +27,7 @@ emoji_num = 5
 embedding_dim = 400
 hidden_dim = 400
 
-fixlen = 12
+fixlen = 15
 batch_size = 32
 epochs = 20
 print_every = 500
@@ -115,7 +115,9 @@ class LSTM_WA(torch.nn.Module) :
 #         self.linearOut = nn.Linear(hidden_dim, emoji_num)
         self.mp = nn.MaxPool1d(hidden_dim, stride=1)
         
-        self.linear1 = nn.Linear(hidden_dim, 200)
+        self.linear1 = nn.Linear(fixlen, 200)
+        # self.linear1 = nn.Linear(hidden_dim, 200)
+
         # self.batchnorm1 = nn.BatchNorm1d(200)
         self.linear2 = nn.Linear(200, 200)
         # self.batchnorm2 = nn.BatchNorm1d(200)
@@ -127,8 +129,8 @@ class LSTM_WA(torch.nn.Module) :
         seq_embeddings = self.attention(lstm_out, self.emoji_matrix)
         lstm_out, lstm_h = self.rnn2(seq_embeddings, hidden_init)
         
-        linear_in = lstm_h.squeeze(0)
-        # linear_in = self.rnn_maxpooling(lstm_out).view(self.batch_size, -1)
+        # linear_in = lstm_h.squeeze(0)
+        linear_in = self.rnn_maxpooling(lstm_out).view(self.batch_size, -1)
         
 #         print(linear_in.shape)
         merged = self.linear1(linear_in)

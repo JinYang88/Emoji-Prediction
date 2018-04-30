@@ -130,7 +130,7 @@ class LSTM_WA(torch.nn.Module) :
         lstm_out, lstm_h = self.rnn2(seq_embeddings, hidden_init)
         
         # linear_in = lstm_h.squeeze(0)
-        linear_in = self.rnn_maxpooling(lstm_out).view(self.batch_size, -1)
+        linear_in = self.rnn_maxpooling(lstm_out).view(-1, self.fixlen)
         
 #         print(linear_in.shape)
         merged = self.linear1(linear_in)

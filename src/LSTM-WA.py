@@ -195,7 +195,7 @@ max_metric = 0
 # Train
 if not test_mode:
     loss_func = nn.NLLLoss()
-    optimizer = optim.Adam(MODEL.parameters(), lr=1e-2)
+    optimizer = optim.Adam(MODEL.parameters(), lr=1e-3)
     print('Start training..')
 
     train_iter.create_batches()

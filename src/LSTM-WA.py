@@ -22,14 +22,13 @@ torch.manual_seed(42)
 test_mode = 0  # 0 for train+test 1 for test
 device = 0 # 0 for gpu, -1 for cpu
 
-bidirectional = False
+bidirectional = True
 emoji_num = 5
-embedding_dim = 400
-hidden_dim = 400
+embedding_dim = 300
+hidden_dim = 600
 
-fixlen = 15
 batch_size = 32
-epochs = 20
+epochs = 4
 print_every = 500
 
 
@@ -38,7 +37,7 @@ normalize_pipeline = data.Pipeline(convert_token=datahelper.normalizeString)
 ID = data.Field(sequential=False, batch_first=True, use_vocab=False)
 EMOJI = data.Field(sequential=False, batch_first=True, use_vocab=False)
 TEXT = data.Field(sequential=True, lower=True, eos_token='<EOS>', init_token='<BOS>',
-                  pad_token='<PAD>', fix_length=fixlen, batch_first=True,)
+                  pad_token='<PAD>', fix_length=None, batch_first=True, preprocessing=normalize_pipeline)
 LABEL = data.Field(sequential=False, batch_first=True, use_vocab=False)
 
 train = data.TabularDataset(
@@ -51,9 +50,8 @@ test = data.TabularDataset(
         path='../data/tweet/multi/top{}/test.csv'.format(emoji_num), format='csv',
         fields=[('Id', ID), ('Text', TEXT), ('Label', LABEL)], skip_header=True)
 
-TEXT.build_vocab(train,valid, min_freq=3)
+TEXT.build_vocab(train,valid,test, min_freq=5)
 print('Building vocabulary Finished.')
-
 
 train_iter = data.BucketIterator(dataset=train, batch_size=batch_size, sort_key=lambda x: len(x.Text), device=device, repeat=False)
 valid_iter = data.Iterator(dataset=valid, batch_size=batch_size, device=device, shuffle=False, repeat=False)
@@ -77,7 +75,8 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
     loss = 0
 
     for text, label in data_dl:
-        y_pred = MODEL(text)
+        hidden_state = MODEL.init_hidden(text.size()[0], device)
+        y_pred = MODEL(text, hidden_state)
         
         loss += loss_func(y_pred, label).data.cpu()
         y_pred = y_pred.data.max(1)[1].cpu().numpy()
@@ -99,92 +98,80 @@ def predict_on(model, data_dl, loss_func, device ,model_state_path=None):
 
 
 class LSTM_WA(torch.nn.Module) :
-    def __init__(self, vocab_size, emoji_num, embedding_dim, hidden_dim, batch_size, device, bidirectional, fixlen):
+    def __init__(self, vocab_size, emoji_num, embedding_dim, hidden_dim, batch_size, device, bidirectional):
         super(LSTM_WA,self).__init__()
         self.bidirectional = bidirectional
         self.hidden_dim = hidden_dim
         self.emoji_num = emoji_num
         self.batch_size = batch_size
-        self.device = device
         
         self.word_embedding = nn.Embedding(vocab_size, embedding_dim)
         self.emoji_matrix = torch.nn.Parameter(torch.rand(emoji_num, embedding_dim))
         self.cosine_similarity = F.cosine_similarity
-        self.rnn1 = nn.GRU(embedding_dim, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
-        self.rnn2 = nn.GRU(hidden_dim // 2 if self.bidirectional else hidden_dim, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
-#         self.linearOut = nn.Linear(hidden_dim, emoji_num)
-        self.mp = nn.MaxPool1d(hidden_dim, stride=1)
-        
-        self.linear1 = nn.Linear(fixlen, 200)
-        # self.linear1 = nn.Linear(hidden_dim, 200)
+        self.lstm = nn.LSTM(embedding_dim * emoji_num, hidden_dim // 2 if self.bidirectional else hidden_dim, batch_first=True, bidirectional=self.bidirectional)
 
+        # self.linear1 = nn.Linear(hidden_dim, 200)
+        # self.dropout1 = nn.Dropout(p=0.1)
+        # self.linear2 = nn.Linear(200, emoji_num)
+
+        self.linear1 = nn.Linear(hidden_dim, 200)
+        # self.dropout1 = nn.Dropout(p=0.5)
         # self.batchnorm1 = nn.BatchNorm1d(200)
         self.linear2 = nn.Linear(200, 200)
+        # self.dropout2 = nn.Dropout(p=0.5)
         # self.batchnorm2 = nn.BatchNorm1d(200)
+        # self.linear3 = nn.Linear(200, 200)
+        # self.dropout3 = nn.Dropout(p=0.5)
+        # self.batchnorm3 = nn.BatchNorm1d(200)
+        # self.linear4 = nn.Linear(200, 200)
+        # self.dropout4 = nn.Dropout(p=0.5)
+        # self.batchnorm4 = nn.BatchNorm1d(200)
         self.linear5 = nn.Linear(200, emoji_num)
         
-    def forward(self, text, hidden_init=None) :
+    def forward(self, text, hidden_init) :
         word_embedding = self.word_embedding(text)
-        lstm_out, lstm_h = self.rnn1(word_embedding, hidden_init)
-        seq_embeddings = self.attention(lstm_out, self.emoji_matrix)
-        lstm_out, lstm_h = self.rnn2(seq_embeddings, hidden_init)
+        seq_embedding = self.attention(word_embedding, self.emoji_matrix)
+        lstm_out,(lstm_h, lstm_c) = self.lstm(seq_embedding, hidden_init)
+ 
+        if not self.bidirectional:
+            linear_in = lstm_h.squeeze(0)
+        else:
+            linear_in = torch.cat((lstm_h[0], lstm_h[1]), dim=1)
         
-        # linear_in = lstm_h.squeeze(0)
-        linear_in = self.rnn_maxpooling(lstm_out).view(lstm_out.size()[0], -1)
-        
-#         print(linear_in.shape)
+        # linearo = self.linearOut(linear_in)
+
         merged = self.linear1(linear_in)
-        # merged = self.batchnorm1(merged)
         merged = F.relu(merged)
+        # merged = self.dropout1(merged)
 
         merged = self.linear2(merged)
-        # merged = self.batchnorm1(merged)
         merged = F.relu(merged)
+        # merged = self.dropout2(merged)
 
-#         merged = self.linear3(merged)
-#         merged = F.relu(merged)
-#         merged = self.dropout3(merged)
+        # merged = self.linear3(merged)
+        # merged = F.relu(merged)
+        # merged = self.dropout3(merged)
 
-#         merged = self.linear4(merged)
-#         merged = F.relu(merged)
-#         merged = self.dropout4(merged)
+        # merged = self.linear4(merged)
+        # merged = F.relu(merged)
+        # merged = self.dropout4(merged)
 
         merged = self.linear5(merged)
-        
-#         print(merged.requires_grad)
-#         sys.exit()
 
         return F.log_softmax(merged, dim=1)
         
-#     Concat
-#     def attention(self, lstm_out, emoji_matrix):
-#         seq_embeddings = []
-#         for emoji_idx in range(self.emoji_num):
-#             similarities = self.cosine_similarity(lstm_out, emoji_matrix[emoji_idx].unsqueeze(0), dim=-1)
-#             simi_weights = F.softmax(similarities, dim=1).view(lstm_out.size()[0], -1, 1)
-#             seq_embedding = simi_weights * lstm_out
-#             seq_embeddings.append(seq_embedding)
-#         seq_embeddings = torch.cat(seq_embeddings, dim=2)
-#         return seq_embeddings
-
-    def rnn_maxpooling(self, lstm_out):
-        mpres = self.mp(lstm_out)
-        return mpres
-    
-    # New
+        
     def attention(self, lstm_out, emoji_matrix):
-        avg_vec = Variable(torch.zeros(lstm_out.size()) if self.device != 0 else torch.zeros(lstm_out.size()).cuda(), requires_grad=True)
+        seq_embeddings = []
         for emoji_idx in range(self.emoji_num):
-#             similarities = self.cosine_similarity(lstm_out, emoji_matrix[emoji_idx].unsqueeze(0), dim=-1)
-            avg_vec = avg_vec + (emoji_matrix[emoji_idx].unsqueeze(0) * lstm_out)
-#             print((emoji_matrix[emoji_idx].unsqueeze(0) * lstm_out)[0][0][0:5])
-#             print(avg_vec[0][0][0:5])
-#             print("------end---------")
-        avg_vec /= self.emoji_num
-#         print(avg_vec.requires_grad)
-        return avg_vec
-        
-        
+            similarities = self.cosine_similarity(lstm_out, emoji_matrix[emoji_idx].unsqueeze(0), dim=-1)
+            simi_weights = F.softmax(similarities, dim=1).view(lstm_out.size()[0], -1, 1)
+            seq_embedding = simi_weights * lstm_out
+            seq_embeddings.append(seq_embedding)
+        seq_embeddings = torch.cat(seq_embeddings, dim=2)
+        return seq_embeddings
+
+
     def init_hidden(self, batch_size, device) :
         layer_num = 2 if self.bidirectional else 1
         if device == -1:
@@ -194,9 +181,8 @@ class LSTM_WA(torch.nn.Module) :
 
 
 
-
 print('Initialing model..')
-MODEL = LSTM_WA(len(TEXT.vocab), emoji_num, embedding_dim, hidden_dim, batch_size, device, bidirectional, fixlen)
+MODEL = LSTM_WA(len(TEXT.vocab), emoji_num, embedding_dim, hidden_dim, batch_size, device, bidirectional)
 if device == 0:
     MODEL.cuda()
     
@@ -208,14 +194,8 @@ max_metric = 0
 
 # Train
 if not test_mode:
-    # for name, param in MODEL.named_parameters():
-    #     if 'bias' in name:
-    #          nn.init.constant(param, 0.0)
-    #     elif 'weight' in name:
-    #          nn.init.xavier_normal(param)
-
     loss_func = nn.NLLLoss()
-    optimizer = optim.Adam(MODEL.parameters(), lr=1e-3)
+    optimizer = optim.Adam(MODEL.parameters(), lr=1e-2)
     print('Start training..')
 
     train_iter.create_batches()
@@ -226,8 +206,9 @@ if not test_mode:
         train_iter.init_epoch()
         batch_count = 0
         for text, label in train_dl:
-            MODEL.train()
-            y_pred = MODEL(text)
+            MODEL.train(True)
+            hidden_state = MODEL.init_hidden(text.size()[0], device)
+            y_pred = MODEL(text, hidden_state)
             loss = loss_func(y_pred, label)
             MODEL.zero_grad()
             loss.backward()
